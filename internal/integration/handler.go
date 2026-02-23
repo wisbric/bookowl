@@ -1,0 +1,339 @@
+package integration
+
+import (
+	"fmt"
+	"log/slog"
+	"net/http"
+	"strings"
+	"time"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
+
+	"github.com/wisbric/bookowl/internal/auth"
+	"github.com/wisbric/bookowl/internal/db"
+	dbtenant "github.com/wisbric/bookowl/internal/db/tenant"
+	"github.com/wisbric/bookowl/internal/httpserver"
+	"github.com/wisbric/bookowl/pkg/document"
+	"github.com/wisbric/bookowl/pkg/tenant"
+)
+
+// Handler serves /api/v1/integration/ endpoints called by NightOwl.
+type Handler struct {
+	docSvc *document.Service
+}
+
+func NewHandler(docSvc *document.Service) *Handler {
+	return &Handler{docSvc: docSvc}
+}
+
+func (h *Handler) Routes() chi.Router {
+	r := chi.NewRouter()
+	r.Use(requireAdmin)
+	r.Get("/runbooks", h.ListRunbooks)
+	r.Get("/runbooks/{id}", h.GetRunbook)
+	r.Post("/post-mortems", h.CreatePostMortem)
+	r.Get("/search", h.Search)
+	return r
+}
+
+// requireAdmin ensures the caller has role=admin (service account key).
+func requireAdmin(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		identity, ok := auth.IdentityFromContext(r.Context())
+		if !ok || identity.Role != "admin" {
+			httpserver.RespondError(w, http.StatusForbidden, "admin role required")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// --- Runbook types ---
+
+type RunbookListItem struct {
+	ID        uuid.UUID `json:"id"`
+	Title     string    `json:"title"`
+	Slug      string    `json:"slug"`
+	Tags      []string  `json:"tags"`
+	URL       string    `json:"url"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type RunbookDetail struct {
+	ID          uuid.UUID `json:"id"`
+	Title       string    `json:"title"`
+	Slug        string    `json:"slug"`
+	ContentText string    `json:"content_text"`
+	ContentHTML string    `json:"content_html"`
+	URL         string    `json:"url"`
+	Tags        []string  `json:"tags"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+type SearchResultItem struct {
+	ID      uuid.UUID `json:"id"`
+	Title   string    `json:"title"`
+	Excerpt string    `json:"excerpt"`
+	URL     string    `json:"url"`
+	Score   float32   `json:"score"`
+}
+
+// --- Post-mortem types ---
+
+type PostMortemRequest struct {
+	Title     string            `json:"title"`
+	SpaceSlug string            `json:"space_slug"`
+	Incident  PostMortemIncident `json:"incident"`
+}
+
+type PostMortemIncident struct {
+	ID         string `json:"id"`
+	Title      string `json:"title"`
+	Severity   string `json:"severity"`
+	RootCause  string `json:"root_cause"`
+	Solution   string `json:"solution"`
+	CreatedAt  string `json:"created_at"`
+	ResolvedAt string `json:"resolved_at"`
+	ResolvedBy string `json:"resolved_by"`
+}
+
+type PostMortemResponse struct {
+	ID    uuid.UUID `json:"id"`
+	URL   string    `json:"url"`
+	Title string    `json:"title"`
+}
+
+// --- Handlers ---
+
+func (h *Handler) ListRunbooks(w http.ResponseWriter, r *http.Request) {
+	q := dbtenant.New(tenant.ConnFromContext(r.Context()))
+	pg := httpserver.ParsePagination(r)
+
+	query := r.URL.Query().Get("q")
+
+	if query != "" {
+		rows, err := q.SearchRunbooks(r.Context(), dbtenant.SearchRunbooksParams{
+			Query:        query,
+			ResultLimit:  pg.Limit,
+			ResultOffset: pg.Offset,
+		})
+		if err != nil {
+			slog.Error("searching runbooks", "error", err)
+			httpserver.RespondError(w, http.StatusInternalServerError, "search failed")
+			return
+		}
+		items := make([]RunbookListItem, len(rows))
+		for i, row := range rows {
+			items[i] = RunbookListItem{
+				ID:        row.ID,
+				Title:     row.Title,
+				Slug:      row.Slug,
+				Tags:      row.Tags,
+				URL:       buildDocURL(r, row.SpaceSlug, row.Slug),
+				UpdatedAt: row.UpdatedAt,
+			}
+		}
+		httpserver.Respond(w, http.StatusOK, httpserver.ListResponse[RunbookListItem]{
+			Items:  items,
+			Total:  int64(len(items)),
+			Limit:  pg.Limit,
+			Offset: pg.Offset,
+		})
+		return
+	}
+
+	total, err := q.CountRunbooks(r.Context())
+	if err != nil {
+		slog.Error("counting runbooks", "error", err)
+		httpserver.RespondError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+
+	rows, err := q.ListRunbooksWithSpace(r.Context(), dbtenant.ListRunbooksWithSpaceParams{
+		Limit:  pg.Limit,
+		Offset: pg.Offset,
+	})
+	if err != nil {
+		slog.Error("listing runbooks", "error", err)
+		httpserver.RespondError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+
+	items := make([]RunbookListItem, len(rows))
+	for i, row := range rows {
+		items[i] = RunbookListItem{
+			ID:        row.ID,
+			Title:     row.Title,
+			Slug:      row.Slug,
+			Tags:      row.Tags,
+			URL:       buildDocURL(r, row.SpaceSlug, row.Slug),
+			UpdatedAt: row.UpdatedAt,
+		}
+	}
+	httpserver.Respond(w, http.StatusOK, httpserver.ListResponse[RunbookListItem]{
+		Items:  items,
+		Total:  total,
+		Limit:  pg.Limit,
+		Offset: pg.Offset,
+	})
+}
+
+func (h *Handler) GetRunbook(w http.ResponseWriter, r *http.Request) {
+	id, err := httpserver.URLParamUUID(r, "id")
+	if err != nil {
+		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	q := dbtenant.New(tenant.ConnFromContext(r.Context()))
+	row, err := q.GetRunbookWithSpace(r.Context(), id)
+	if err != nil {
+		if db.IsNotFound(err) {
+			httpserver.RespondError(w, http.StatusNotFound, "runbook not found")
+			return
+		}
+		slog.Error("getting runbook", "id", id, "error", err)
+		httpserver.RespondError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+
+	httpserver.Respond(w, http.StatusOK, RunbookDetail{
+		ID:          row.ID,
+		Title:       row.Title,
+		Slug:        row.Slug,
+		ContentText: row.ContentText,
+		ContentHTML: renderHTML(row.Content),
+		URL:         buildDocURL(r, row.SpaceSlug, row.Slug),
+		Tags:        row.Tags,
+		UpdatedAt:   row.UpdatedAt,
+	})
+}
+
+func (h *Handler) CreatePostMortem(w http.ResponseWriter, r *http.Request) {
+	var req PostMortemRequest
+	if err := httpserver.DecodeJSON(r, &req); err != nil {
+		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if req.Title == "" || req.SpaceSlug == "" {
+		httpserver.RespondError(w, http.StatusBadRequest, "title and space_slug are required")
+		return
+	}
+
+	ctx := r.Context()
+	conn := tenant.ConnFromContext(ctx)
+	q := dbtenant.New(conn)
+
+	// Find or create the target space.
+	sp, err := q.GetSpaceBySlug(ctx, req.SpaceSlug)
+	if err != nil {
+		if !db.IsNotFound(err) {
+			slog.Error("looking up space for post-mortem", "slug", req.SpaceSlug, "error", err)
+			httpserver.RespondError(w, http.StatusInternalServerError, "internal error")
+			return
+		}
+		// Create the space.
+		sp, err = q.CreateSpace(ctx, dbtenant.CreateSpaceParams{
+			Name:        spaceName(req.SpaceSlug),
+			Slug:        req.SpaceSlug,
+			Description: pgtype.Text{String: "Post-mortem documents created from NightOwl incidents", Valid: true},
+		})
+		if err != nil {
+			slog.Error("creating space for post-mortem", "slug", req.SpaceSlug, "error", err)
+			httpserver.RespondError(w, http.StatusInternalServerError, "failed to create space")
+			return
+		}
+	}
+
+	// Build document content from template.
+	content := buildPostMortemContent(req.Incident)
+	contentText := document.ExtractText(content)
+	wordCount := document.CountWords(contentText)
+	docSlug := slugify(req.Title)
+
+	incidentID := req.Incident.ID
+
+	doc, err := q.CreateDocument(ctx, dbtenant.CreateDocumentParams{
+		SpaceID:            sp.ID,
+		Title:              req.Title,
+		Slug:               docSlug,
+		Content:            content,
+		ContentText:        contentText,
+		DocType:            "post-mortem",
+		Status:             "published",
+		Tags:               []string{"post-mortem", req.Incident.Severity},
+		WordCount:          wordCount,
+		NightowlIncidentID: pgtype.Text{String: incidentID, Valid: incidentID != ""},
+	})
+	if err != nil {
+		slog.Error("creating post-mortem document", "error", err)
+		httpserver.RespondError(w, http.StatusInternalServerError, "failed to create post-mortem")
+		return
+	}
+
+	httpserver.Respond(w, http.StatusCreated, PostMortemResponse{
+		ID:    doc.ID,
+		URL:   buildDocURL(r, req.SpaceSlug, docSlug),
+		Title: doc.Title,
+	})
+}
+
+func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query().Get("q")
+	if query == "" {
+		httpserver.RespondError(w, http.StatusBadRequest, "query parameter 'q' is required")
+		return
+	}
+
+	pg := httpserver.ParsePagination(r)
+	q := dbtenant.New(tenant.ConnFromContext(r.Context()))
+
+	rows, err := q.SearchRunbooks(r.Context(), dbtenant.SearchRunbooksParams{
+		Query:        query,
+		ResultLimit:  pg.Limit,
+		ResultOffset: pg.Offset,
+	})
+	if err != nil {
+		slog.Error("integration search failed", "error", err)
+		httpserver.RespondError(w, http.StatusInternalServerError, "search failed")
+		return
+	}
+
+	items := make([]SearchResultItem, len(rows))
+	for i, row := range rows {
+		items[i] = SearchResultItem{
+			ID:      row.ID,
+			Title:   row.Title,
+			Excerpt: string(row.Excerpt),
+			URL:     buildDocURL(r, row.SpaceSlug, row.Slug),
+			Score:   row.Rank,
+		}
+	}
+	httpserver.Respond(w, http.StatusOK, map[string]any{"items": items})
+}
+
+// --- Helpers ---
+
+func buildDocURL(r *http.Request, spaceSlug, docSlug string) string {
+	scheme := "https"
+	if r.TLS == nil {
+		scheme = "http"
+	}
+	if fwd := r.Header.Get("X-Forwarded-Proto"); fwd != "" {
+		scheme = fwd
+	}
+	host := r.Host
+	if fwd := r.Header.Get("X-Forwarded-Host"); fwd != "" {
+		host = fwd
+	}
+	return fmt.Sprintf("%s://%s/spaces/%s/docs/%s", scheme, host, spaceSlug, docSlug)
+}
+
+func spaceName(slug string) string {
+	if slug == "" {
+		return slug
+	}
+	return strings.ToUpper(slug[:1]) + slug[1:]
+}

@@ -1,0 +1,26 @@
+-- name: CreateTenant :one
+INSERT INTO public.tenants (slug, name, config)
+VALUES ($1, $2, $3)
+RETURNING *;
+
+-- name: GetTenantByID :one
+SELECT * FROM public.tenants
+WHERE id = $1;
+
+-- name: GetTenantBySlug :one
+SELECT * FROM public.tenants
+WHERE slug = $1;
+
+-- name: ListTenants :many
+SELECT * FROM public.tenants
+ORDER BY name;
+
+-- name: UpdateTenant :one
+UPDATE public.tenants
+SET name = $2, config = $3, updated_at = now()
+WHERE id = $1
+RETURNING *;
+
+-- name: DeleteTenant :exec
+DELETE FROM public.tenants
+WHERE id = $1;

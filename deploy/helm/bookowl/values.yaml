@@ -1,0 +1,80 @@
+image:
+  repository: ghcr.io/wisbric/bookowl
+  tag: ""   # defaults to Chart.appVersion
+  pullPolicy: IfNotPresent
+
+web:
+  image:
+    repository: ghcr.io/wisbric/bookowl-web
+    tag: ""
+    pullPolicy: IfNotPresent
+  replicas: 2
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+api:
+  replicas: 2
+  port: 8081
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+database:
+  url: ""   # set via external secret
+
+redis:
+  url: ""   # set via external secret
+
+oidc:
+  issuerUrl: ""
+  clientId: bookowl
+
+nightowl:
+  apiUrl: ""
+  apiKey: ""   # set via external secret
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: "20m"
+  hosts:
+    - host: bookowl.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: web
+        - path: /api
+          pathType: Prefix
+          service: api
+  tls:
+    - secretName: bookowl-tls
+      hosts:
+        - bookowl.example.com
+
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+
+pdb:
+  enabled: true
+  minAvailable: 1
+
+serviceAccount:
+  create: true
+  name: ""
+
+imagePullSecrets: []
+extraEnv: []

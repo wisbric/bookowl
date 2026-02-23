@@ -1,0 +1,65 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: bookowl
+      POSTGRES_PASSWORD: bookowl
+      POSTGRES_DB: bookowl
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bookowl"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    image: bookowl:dev
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      BOOKOWL_MODE: api
+      BOOKOWL_PORT: "8081"
+      BOOKOWL_DB_URL: postgres://bookowl:bookowl@postgres:5432/bookowl?sslmode=disable
+      BOOKOWL_REDIS_URL: redis://redis:6379/1
+      BOOKOWL_DEV_MODE: "true"
+      BOOKOWL_NIGHTOWL_API_URL: ""
+      BOOKOWL_NIGHTOWL_API_KEY: ""
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  seed:
+    image: bookowl:dev
+    environment:
+      BOOKOWL_MODE: seed-demo
+      BOOKOWL_DB_URL: postgres://bookowl:bookowl@postgres:5432/bookowl?sslmode=disable
+    depends_on:
+      - api
+    restart: "no"
+
+  web:
+    image: bookowl-web:dev
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    ports:
+      - "3001:80"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:

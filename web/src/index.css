@@ -1,0 +1,201 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--fg);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-fg);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-fg);
+  --color-border: var(--border-color);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-fg);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-fg);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-fg);
+  --color-sidebar: var(--sidebar-bg);
+  --color-sidebar-foreground: var(--sidebar-fg);
+
+  /* Document type colors */
+  --color-doc-runbook: #8B5CF6;
+  --color-doc-postmortem: #DC2626;
+  --color-doc-sop: #3B82F6;
+  --color-doc-adr: #F59E0B;
+  --color-doc-default: #6B7280;
+
+  /* Severity colors */
+  --color-severity-critical: #DC2626;
+  --color-severity-major: #F59E0B;
+  --color-severity-minor: #3B82F6;
+  --color-severity-info: #6B7280;
+
+  /* Font families */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* Border radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+}
+
+/* Dark mode (default) — NightOwl design system */
+:root {
+  --bg: #0A0F0D;
+  --fg: #E8ECE9;
+  --muted: #1A2520;
+  --muted-fg: #8B9A91;
+  --card: #111916;
+  --card-fg: #E8ECE9;
+  --border-color: #1E2E27;
+  --input: #1E2E27;
+  --ring: #00e5a0;
+  --primary: #0A2E24;
+  --primary-fg: #00e5a0;
+  --accent: #00e5a0;
+  --accent-fg: #0A2E24;
+  --destructive: #DC2626;
+  --destructive-fg: #FECACA;
+  --sidebar-bg: #080D0B;
+  --sidebar-fg: #C8D4CC;
+}
+
+/* Light mode override */
+.light {
+  --bg: #FAFCFB;
+  --fg: #0A2E24;
+  --muted: #F0F5F2;
+  --muted-fg: #5A6B62;
+  --card: #FFFFFF;
+  --card-fg: #0A2E24;
+  --border-color: #D4DDD8;
+  --input: #D4DDD8;
+  --ring: #00C88A;
+  --primary: #0A2E24;
+  --primary-fg: #FFFFFF;
+  --accent: #00C88A;
+  --accent-fg: #0A2E24;
+  --destructive: #DC2626;
+  --destructive-fg: #FFFFFF;
+  --sidebar-bg: #F5F8F6;
+  --sidebar-fg: #1A2520;
+}
+
+/* Base styles */
+body {
+  font-family: var(--font-sans);
+}
+
+/* Callout block styles (dark mode defaults) */
+.callout {
+  border-left: 3px solid;
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+  margin: 0.5rem 0;
+}
+
+.callout-info {
+  background-color: #1E3A5F;
+  border-color: #3B82F6;
+}
+
+.callout-warning {
+  background-color: #3D2E00;
+  border-color: #F59E0B;
+}
+
+.callout-danger {
+  background-color: #3D0000;
+  border-color: #DC2626;
+}
+
+/* Live Context block styles */
+.live-context-block {
+  border-left: 3px solid var(--accent);
+  background-color: var(--card);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+  margin: 0.5rem 0;
+}
+
+.live-context-block.loading {
+  background-color: var(--muted);
+  border-color: var(--border-color);
+}
+
+.live-context-block.error {
+  background-color: var(--muted);
+  border-color: var(--destructive);
+  border-style: dashed;
+}
+
+/* Tiptap editor styles */
+.tiptap {
+  outline: none;
+}
+
+.tiptap p.is-editor-empty:first-child::before {
+  color: var(--muted-fg);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.tiptap ul[data-type="taskList"] {
+  list-style: none;
+  padding: 0;
+}
+
+.tiptap ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.tiptap ul[data-type="taskList"] li > label {
+  flex: 0 0 auto;
+  margin-top: 0.25rem;
+}
+
+.tiptap pre {
+  background-color: var(--muted);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+}
+
+.tiptap blockquote {
+  border-left: 3px solid var(--border-color);
+  padding-left: 1rem;
+  color: var(--muted-fg);
+}
+
+.tiptap hr {
+  border-color: var(--border-color);
+  margin: 1.5rem 0;
+}
+
+.tiptap table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.tiptap th,
+.tiptap td {
+  border: 1px solid var(--border-color);
+  padding: 0.5rem;
+}
+
+.tiptap th {
+  background-color: var(--muted);
+  font-weight: 600;
+}
