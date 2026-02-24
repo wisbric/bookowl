@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState, useCallback } from 'react'
-import { Pencil, Eye, MoreHorizontal, ChevronLeft } from 'lucide-react'
+import { Pencil, Eye, Clock, ChevronLeft } from 'lucide-react'
 import { api } from '@/api/client'
 import { BookOwlEditor } from '@/components/editor/BookOwlEditor'
+import { VersionHistory } from '@/components/VersionHistory'
 import { formatDistanceToNow } from 'date-fns'
 import type { Document, Space } from '@/api/client'
 
@@ -15,6 +16,7 @@ function DocumentPage() {
   const { spaceId, docId } = Route.useParams()
   const queryClient = useQueryClient()
   const [editing, setEditing] = useState(false)
+  const [showVersions, setShowVersions] = useState(false)
 
   const { data: space } = useQuery({
     queryKey: ['space', spaceId],
@@ -64,69 +66,88 @@ function DocumentPage() {
   const docTypeColor = getDocTypeColor(doc.doc_type)
 
   return (
-    <div className="mx-auto max-w-4xl px-8 py-6">
-      {/* Breadcrumb */}
-      <div className="mb-4 flex items-center gap-1 text-sm text-muted-foreground">
-        <Link
-          to="/spaces/$spaceId"
-          params={{ spaceId }}
-          className="hover:text-foreground"
-        >
-          <ChevronLeft className="mr-1 inline h-4 w-4" />
-          {space?.name || 'Space'}
-        </Link>
-      </div>
-
-      {/* Document header */}
-      <div className="mb-6">
-        <div className="flex items-start justify-between">
-          <h1 className="text-2xl font-bold tracking-tight">
-            {doc.icon && <span className="mr-2">{doc.icon}</span>}
-            {doc.title}
-          </h1>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setEditing(!editing)}
-              className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm transition-colors hover:bg-muted"
+    <div className="flex h-full">
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-4xl px-8 py-6">
+          {/* Breadcrumb */}
+          <div className="mb-4 flex items-center gap-1 text-sm text-muted-foreground">
+            <Link
+              to="/spaces/$spaceId"
+              params={{ spaceId }}
+              className="hover:text-foreground"
             >
-              {editing ? (
-                <><Eye className="h-4 w-4" /> View</>
-              ) : (
-                <><Pencil className="h-4 w-4" /> Edit</>
-              )}
-            </button>
-            <button className="rounded-md border border-border p-1.5 transition-colors hover:bg-muted">
-              <MoreHorizontal className="h-4 w-4" />
-            </button>
+              <ChevronLeft className="mr-1 inline h-4 w-4" />
+              {space?.name || 'Space'}
+            </Link>
           </div>
-        </div>
-        <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
-          <span
-            className="inline-block h-2 w-2 rounded-full"
-            style={{ backgroundColor: docTypeColor }}
+
+          {/* Document header */}
+          <div className="mb-6">
+            <div className="flex items-start justify-between">
+              <h1 className="text-2xl font-bold tracking-tight">
+                {doc.icon && <span className="mr-2">{doc.icon}</span>}
+                {doc.title}
+              </h1>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setEditing(!editing)}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm transition-colors hover:bg-muted"
+                >
+                  {editing ? (
+                    <><Eye className="h-4 w-4" /> View</>
+                  ) : (
+                    <><Pencil className="h-4 w-4" /> Edit</>
+                  )}
+                </button>
+                <button
+                  onClick={() => setShowVersions(!showVersions)}
+                  className={`rounded-md border border-border p-1.5 transition-colors hover:bg-muted ${showVersions ? 'bg-muted text-accent' : ''}`}
+                  title="Version history"
+                >
+                  <Clock className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+              <span
+                className="inline-block h-2 w-2 rounded-full"
+                style={{ backgroundColor: docTypeColor }}
+              />
+              <span className="capitalize">{doc.doc_type}</span>
+              <span>·</span>
+              <span className="capitalize">{doc.status}</span>
+              <span>·</span>
+              <span>v{doc.version}</span>
+              <span>·</span>
+              <span>Updated {formatDistanceToNow(new Date(doc.updated_at))} ago</span>
+            </div>
+            {saveMutation.isPending && (
+              <div className="mt-2 text-xs text-accent">Saving...</div>
+            )}
+            {saveMutation.isSuccess && (
+              <div className="mt-2 text-xs text-muted-foreground">Saved</div>
+            )}
+          </div>
+
+          {/* Editor / Viewer */}
+          <BookOwlEditor
+            content={doc.content}
+            editable={editing}
+            onSave={handleSave}
           />
-          <span className="capitalize">{doc.doc_type}</span>
-          <span>·</span>
-          <span className="capitalize">{doc.status}</span>
-          <span>·</span>
-          <span>v{doc.version}</span>
-          <span>·</span>
-          <span>Updated {formatDistanceToNow(new Date(doc.updated_at))} ago</span>
         </div>
-        {saveMutation.isPending && (
-          <div className="mt-2 text-xs text-accent">Saving...</div>
-        )}
-        {saveMutation.isSuccess && (
-          <div className="mt-2 text-xs text-muted-foreground">Saved</div>
-        )}
       </div>
 
-      {/* Editor / Viewer */}
-      <BookOwlEditor
-        content={doc.content}
-        editable={editing}
-        onSave={handleSave}
-      />
+      {/* Version history panel */}
+      {showVersions && (
+        <div className="w-80 shrink-0">
+          <VersionHistory
+            documentId={docId}
+            currentVersion={doc.version}
+            onClose={() => setShowVersions(false)}
+          />
+        </div>
+      )}
     </div>
   )
 }

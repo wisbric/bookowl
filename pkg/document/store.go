@@ -18,6 +18,11 @@ func NewStore(conn dbtenant.DBTX) *Store {
 	return &Store{q: dbtenant.New(conn)}
 }
 
+// Queries returns the underlying sqlc queries for use with cross-package helpers.
+func (s *Store) Queries() *dbtenant.Queries {
+	return s.q
+}
+
 func (s *Store) Create(ctx context.Context, params dbtenant.CreateDocumentParams) (dbtenant.Document, error) {
 	row, err := s.q.CreateDocument(ctx, params)
 	if err != nil {

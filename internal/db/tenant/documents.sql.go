@@ -170,6 +170,18 @@ func (q *Queries) GetDocumentByID(ctx context.Context, id uuid.UUID) (Document, 
 	return i, err
 }
 
+const getDocumentByNightOwlAlertID = `-- name: GetDocumentByNightOwlAlertID :one
+SELECT id FROM documents
+WHERE nightowl_alert_id = $1
+`
+
+func (q *Queries) GetDocumentByNightOwlAlertID(ctx context.Context, nightowlAlertID pgtype.Text) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, getDocumentByNightOwlAlertID, nightowlAlertID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const getDocumentBySlug = `-- name: GetDocumentBySlug :one
 SELECT id, space_id, collection_id, title, slug, content, content_text, doc_type, status, tags, icon, position, word_count, version, nightowl_incident_id, nightowl_alert_id, search_vector, created_by, updated_by, created_at, updated_at FROM documents
 WHERE space_id = $1 AND slug = $2

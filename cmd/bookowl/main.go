@@ -8,6 +8,7 @@ import (
 
 	"github.com/wisbric/bookowl/internal/app"
 	"github.com/wisbric/bookowl/internal/config"
+	"github.com/wisbric/bookowl/internal/migrate"
 )
 
 func main() {
@@ -35,6 +36,8 @@ func run() error {
 	case "seed", "seed-demo":
 		slog.Info("seed mode not yet implemented", "mode", cfg.Mode)
 		return nil
+	case "migrate-nightowl-runbooks":
+		return migrate.RunRunbookMigration(ctx, cfg)
 	default:
 		return fmt.Errorf("unknown mode: %s", cfg.Mode)
 	}

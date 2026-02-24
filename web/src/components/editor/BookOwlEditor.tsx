@@ -14,6 +14,8 @@ import { useEffect, useRef, useCallback } from 'react'
 import { CalloutBlock } from './extensions/CalloutBlock'
 import { LiveContextBlock } from './extensions/LiveContextBlock'
 import { EditorToolbar } from './EditorToolbar'
+import { api } from '@/api/client'
+import type { ImageUploadResponse } from '@/api/client'
 
 const lowlight = createLowlight(common)
 
@@ -21,6 +23,15 @@ interface BookOwlEditorProps {
   content: Record<string, unknown>
   editable: boolean
   onSave?: (content: Record<string, unknown>) => void
+}
+
+async function uploadImageFile(file: File): Promise<string | null> {
+  try {
+    const result = await api.upload<ImageUploadResponse>('/images', file)
+    return result.url
+  } catch {
+    return null
+  }
 }
 
 export function BookOwlEditor({ content, editable, onSave }: BookOwlEditorProps) {
@@ -65,6 +76,52 @@ export function BookOwlEditor({ content, editable, onSave }: BookOwlEditorProps)
     editorProps: {
       attributes: {
         class: 'tiptap prose prose-invert max-w-none focus:outline-none min-h-[300px]',
+      },
+      handleDrop: (view, event, _slice, moved) => {
+        if (moved || !event.dataTransfer?.files.length) return false
+
+        const images = Array.from(event.dataTransfer.files).filter((f) =>
+          f.type.startsWith('image/'),
+        )
+        if (!images.length) return false
+
+        event.preventDefault()
+        const coords = view.posAtCoords({ left: event.clientX, top: event.clientY })
+
+        for (const file of images) {
+          uploadImageFile(file).then((url) => {
+            if (url) {
+              const node = view.state.schema.nodes.image.create({ src: url })
+              const tr = view.state.tr.insert(coords?.pos ?? view.state.selection.anchor, node)
+              view.dispatch(tr)
+            }
+          })
+        }
+        return true
+      },
+      handlePaste: (view, event) => {
+        const items = event.clipboardData?.items
+        if (!items) return false
+
+        const imageItems = Array.from(items).filter((item) =>
+          item.type.startsWith('image/'),
+        )
+        if (!imageItems.length) return false
+
+        event.preventDefault()
+        for (const item of imageItems) {
+          const file = item.getAsFile()
+          if (!file) continue
+
+          uploadImageFile(file).then((url) => {
+            if (url) {
+              const node = view.state.schema.nodes.image.create({ src: url })
+              const tr = view.state.tr.replaceSelectionWith(node)
+              view.dispatch(tr)
+            }
+          })
+        }
+        return true
       },
     },
   })

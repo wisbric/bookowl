@@ -94,6 +94,10 @@ WHERE d.id = $1 AND d.doc_type = 'runbook';
 SELECT count(*) FROM documents
 WHERE doc_type = 'runbook' AND status = 'published';
 
+-- name: GetDocumentByNightOwlAlertID :one
+SELECT id FROM documents
+WHERE nightowl_alert_id = $1;
+
 -- name: SearchRunbooks :many
 SELECT
     d.id, d.title, d.slug, d.tags, d.updated_at,

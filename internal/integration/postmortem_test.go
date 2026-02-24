@@ -208,6 +208,31 @@ func TestRenderHTML(t *testing.T) {
 			"<table><tr><th><p>H1</p></th><td><p>C1</p></td></tr></table>",
 		},
 		{
+			"image",
+			`{"type":"doc","content":[{"type":"image","attrs":{"src":"/api/v1/images/abc","alt":"screenshot"}}]}`,
+			`<img src="/api/v1/images/abc" alt="screenshot">`,
+		},
+		{
+			"image no alt",
+			`{"type":"doc","content":[{"type":"image","attrs":{"src":"https://example.com/img.png"}}]}`,
+			`<img src="https://example.com/img.png" alt="">`,
+		},
+		{
+			"hard break",
+			`{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"line1"},{"type":"hardBreak"},{"type":"text","text":"line2"}]}]}`,
+			"<p>line1<br>line2</p>",
+		},
+		{
+			"callout info",
+			`{"type":"doc","content":[{"type":"callout","attrs":{"type":"info"},"content":[{"type":"paragraph","content":[{"type":"text","text":"Note this"}]}]}]}`,
+			`<div class="callout callout-info"><p>Note this</p></div>`,
+		},
+		{
+			"callout warning",
+			`{"type":"doc","content":[{"type":"callout","attrs":{"type":"warning"},"content":[{"type":"paragraph","content":[{"type":"text","text":"Be careful"}]}]}]}`,
+			`<div class="callout callout-warning"><p>Be careful</p></div>`,
+		},
+		{
 			"html escape",
 			`{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"<script>alert(1)</script>"}]}]}`,
 			"<p>&lt;script&gt;alert(1)&lt;/script&gt;</p>",

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { BookOpen, Search, FileText, Clock } from 'lucide-react'
 
@@ -50,7 +51,7 @@ function QuickAction({
   title,
   description,
 }: {
-  icon: React.ReactNode
+  icon: ReactNode
   title: string
   description: string
 }) {

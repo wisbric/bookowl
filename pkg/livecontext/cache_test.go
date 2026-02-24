@@ -1,6 +1,9 @@
 package livecontext
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestOnCallKey(t *testing.T) {
 	tests := []struct {
@@ -67,5 +70,29 @@ func TestIncidentKey(t *testing.T) {
 		if got != tt.want {
 			t.Errorf("IncidentKey(%q, %q) = %q, want %q", tt.tenant, tt.incidentID, got, tt.want)
 		}
+	}
+}
+
+func TestCachedEntry_IsFresh(t *testing.T) {
+	tests := []struct {
+		name     string
+		cachedAt time.Time
+		want     bool
+	}{
+		{"just cached", time.Now().Add(-1 * time.Second), true},
+		{"15 seconds ago", time.Now().Add(-15 * time.Second), true},
+		{"29 seconds ago", time.Now().Add(-29 * time.Second), true},
+		{"31 seconds ago", time.Now().Add(-31 * time.Second), false},
+		{"1 minute ago", time.Now().Add(-1 * time.Minute), false},
+		{"5 minutes ago", time.Now().Add(-5 * time.Minute), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			entry := &cachedEntry{CachedAt: tt.cachedAt}
+			got := entry.IsFresh()
+			if got != tt.want {
+				t.Errorf("IsFresh() = %v, want %v (cached %v ago)", got, tt.want, time.Since(tt.cachedAt))
+			}
+		})
 	}
 }

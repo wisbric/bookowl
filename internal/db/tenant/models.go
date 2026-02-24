@@ -63,6 +63,13 @@ type Document struct {
 	UpdatedAt          time.Time       `json:"updated_at"`
 }
 
+type DocumentImage struct {
+	ID         uuid.UUID `json:"id"`
+	DocumentID uuid.UUID `json:"document_id"`
+	StorageID  uuid.UUID `json:"storage_id"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
 type DocumentVersion struct {
 	ID            uuid.UUID       `json:"id"`
 	DocumentID    uuid.UUID       `json:"document_id"`
@@ -95,6 +102,17 @@ type SpaceMember struct {
 	UserID    uuid.UUID `json:"user_id"`
 	Role      string    `json:"role"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+type StorageObject struct {
+	ID          uuid.UUID   `json:"id"`
+	StorageKey  string      `json:"storage_key"`
+	Filename    string      `json:"filename"`
+	ContentType string      `json:"content_type"`
+	SizeBytes   int64       `json:"size_bytes"`
+	Backend     string      `json:"backend"`
+	UploadedBy  pgtype.UUID `json:"uploaded_by"`
+	CreatedAt   time.Time   `json:"created_at"`
 }
 
 type User struct {

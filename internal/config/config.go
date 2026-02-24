@@ -16,6 +16,24 @@ type Config struct {
 
 	NightOwlAPIURL string `env:"BOOKOWL_NIGHTOWL_API_URL" envDefault:"http://localhost:8080"`
 	NightOwlAPIKey string `env:"BOOKOWL_NIGHTOWL_API_KEY"`
+
+	// Image storage.
+	StorageBackend   string `env:"BOOKOWL_STORAGE_BACKEND" envDefault:"local"`
+	StorageLocalPath string `env:"BOOKOWL_STORAGE_LOCAL_PATH" envDefault:"/tmp/bookowl-images"`
+
+	// S3-compatible storage.
+	StorageS3Endpoint        string `env:"BOOKOWL_STORAGE_S3_ENDPOINT"`
+	StorageS3Bucket          string `env:"BOOKOWL_STORAGE_S3_BUCKET" envDefault:"bookowl-images"`
+	StorageS3Region          string `env:"BOOKOWL_STORAGE_S3_REGION" envDefault:"eu-central-1"`
+	StorageS3AccessKeyID     string `env:"BOOKOWL_STORAGE_S3_ACCESS_KEY_ID"`
+	StorageS3SecretAccessKey string `env:"BOOKOWL_STORAGE_S3_SECRET_ACCESS_KEY"`
+	StorageS3PublicURL       string `env:"BOOKOWL_STORAGE_S3_PUBLIC_URL"`
+	StorageS3UsePresign      bool   `env:"BOOKOWL_STORAGE_S3_USE_PRESIGN" envDefault:"false"`
+
+	// Runbook migration.
+	MigrateTenantSlug       string `env:"BOOKOWL_MIGRATE_TENANT_SLUG" envDefault:"acme"`
+	MigrateTargetSpace      string `env:"BOOKOWL_MIGRATE_TARGET_SPACE" envDefault:"runbooks"`
+	MigrateTargetCollection string `env:"BOOKOWL_MIGRATE_TARGET_COLLECTION" envDefault:"imported"`
 }
 
 func Load() (Config, error) {

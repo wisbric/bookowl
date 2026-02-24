@@ -17,13 +17,30 @@ import {
   Table,
   Image,
 } from 'lucide-react'
+import React, { useRef, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
+import { api } from '@/api/client'
+import type { ImageUploadResponse } from '@/api/client'
 
 interface EditorToolbarProps {
   editor: Editor
 }
 
 export function EditorToolbar({ editor }: EditorToolbarProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      const result = await api.upload<ImageUploadResponse>('/images', file)
+      editor.chain().focus().setImage({ src: result.url }).run()
+    } catch {
+      // Silently fail — the user will see the image didn't appear
+    }
+    e.target.value = ''
+  }
+
   return (
     <div className="flex flex-wrap items-center gap-0.5 border-b border-border px-3 py-2">
       {/* Text formatting */}
@@ -149,14 +166,18 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
           <Table className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton
-          onClick={() => {
-            const url = window.prompt('Image URL:')
-            if (url) editor.chain().focus().setImage({ src: url }).run()
-          }}
-          title="Image"
+          onClick={() => fileInputRef.current?.click()}
+          title="Upload image"
         >
           <Image className="h-4 w-4" />
         </ToolbarButton>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleImageUpload}
+        />
       </ToolbarGroup>
 
       <ToolbarDivider />
@@ -210,7 +231,7 @@ function ToolbarButton({
   onClick,
   title,
 }: {
-  children: React.ReactNode
+  children: ReactNode
   active?: boolean
   disabled?: boolean
   onClick: () => void
@@ -235,7 +256,7 @@ function ToolbarButton({
   )
 }
 
-function ToolbarGroup({ children }: { children: React.ReactNode }) {
+function ToolbarGroup({ children }: { children: ReactNode }) {
   return <div className="flex items-center gap-0.5">{children}</div>
 }
 

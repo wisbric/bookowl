@@ -1,7 +1,8 @@
 import { Link } from '@tanstack/react-router'
-import { ChevronRight, FileText, FolderOpen } from 'lucide-react'
+import { ChevronRight, FileText, FolderOpen, Plus } from 'lucide-react'
 import { useState } from 'react'
 import type { TreeNode, TreeDoc } from '@/api/client'
+import { CreateDocumentDialog } from '@/components/CreateDocumentDialog'
 
 interface SidebarTreeProps {
   spaceId: string
@@ -20,28 +21,47 @@ export function SidebarTree({ spaceId, nodes }: SidebarTreeProps) {
 
 function CollectionNode({ spaceId, node }: { spaceId: string; node: TreeNode }) {
   const [expanded, setExpanded] = useState(true)
+  const [showCreateDoc, setShowCreateDoc] = useState(false)
 
   return (
-    <div>
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-sm text-sidebar-foreground transition-colors hover:bg-muted"
-      >
-        <ChevronRight
-          className={`h-3.5 w-3.5 shrink-0 transition-transform ${expanded ? 'rotate-90' : ''}`}
-        />
-        <FolderOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-        <span className="truncate">{node.collection_name}</span>
-      </button>
-
-      {expanded && node.documents.length > 0 && (
-        <div className="ml-4 space-y-0.5 py-0.5">
-          {node.documents.map((doc) => (
-            <DocumentLink key={doc.id} spaceId={spaceId} doc={doc} />
-          ))}
+    <>
+      <div>
+        <div className="group flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-sm text-sidebar-foreground transition-colors hover:bg-muted">
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="flex flex-1 items-center gap-1.5"
+          >
+            <ChevronRight
+              className={`h-3.5 w-3.5 shrink-0 transition-transform ${expanded ? 'rotate-90' : ''}`}
+            />
+            <FolderOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <span className="truncate">{node.collection_name}</span>
+          </button>
+          <button
+            onClick={() => setShowCreateDoc(true)}
+            className="rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
+            title="New document"
+          >
+            <Plus className="h-3 w-3" />
+          </button>
         </div>
-      )}
-    </div>
+
+        {expanded && node.documents.length > 0 && (
+          <div className="ml-4 space-y-0.5 py-0.5">
+            {node.documents.map((doc) => (
+              <DocumentLink key={doc.id} spaceId={spaceId} doc={doc} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <CreateDocumentDialog
+        open={showCreateDoc}
+        spaceId={spaceId}
+        collectionId={node.collection_id}
+        onClose={() => setShowCreateDoc(false)}
+      />
+    </>
   )
 }
 

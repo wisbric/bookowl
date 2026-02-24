@@ -139,7 +139,9 @@ func (h *Handler) proxyWithCache(w http.ResponseWriter, r *http.Request, cacheKe
 	if err != nil {
 		slog.Error("reading live context cache", "key", cacheKey, "error", err)
 	}
-	if cached != nil {
+
+	// Fresh cache hit — return immediately.
+	if cached != nil && cached.IsFresh() {
 		httpserver.Respond(w, http.StatusOK, Envelope{
 			Data:     cached.Data,
 			CachedAt: &cached.CachedAt,
@@ -148,10 +150,22 @@ func (h *Handler) proxyWithCache(w http.ResponseWriter, r *http.Request, cacheKe
 		return
 	}
 
-	// Cache miss — call NightOwl.
+	// Stale or no cache — call NightOwl.
 	data, err := fetch()
 	if err != nil {
-		slog.Warn("NightOwl call failed, returning unavailable", "key", cacheKey, "error", err)
+		slog.Warn("NightOwl call failed", "key", cacheKey, "error", err)
+
+		// Graceful degradation: return stale cache if available.
+		if cached != nil {
+			httpserver.Respond(w, http.StatusOK, Envelope{
+				Data:     cached.Data,
+				CachedAt: &cached.CachedAt,
+				Source:   "stale",
+			})
+			return
+		}
+
+		// No cache at all — unavailable.
 		httpserver.Respond(w, http.StatusOK, Envelope{
 			Data:   json.RawMessage(`{"status":"unavailable"}`),
 			Source: "unavailable",
@@ -159,7 +173,7 @@ func (h *Handler) proxyWithCache(w http.ResponseWriter, r *http.Request, cacheKe
 		return
 	}
 
-	// Cache the result.
+	// Cache the fresh result.
 	if cacheErr := h.cache.Set(ctx, cacheKey, data); cacheErr != nil {
 		slog.Error("writing live context cache", "key", cacheKey, "error", cacheErr)
 	}

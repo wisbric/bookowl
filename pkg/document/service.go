@@ -9,6 +9,7 @@ import (
 
 	"github.com/wisbric/bookowl/internal/db"
 	dbtenant "github.com/wisbric/bookowl/internal/db/tenant"
+	"github.com/wisbric/bookowl/pkg/image"
 )
 
 type Service struct{}
@@ -62,6 +63,10 @@ func (s *Service) Create(ctx context.Context, store *Store, req CreateRequest, u
 	if err != nil {
 		return Response{}, err
 	}
+
+	// Sync image references from Tiptap content.
+	image.SyncDocumentImages(ctx, store.Queries(), row.ID, req.Content)
+
 	return toResponse(row), nil
 }
 
@@ -157,6 +162,10 @@ func (s *Service) Update(ctx context.Context, store *Store, id uuid.UUID, req Up
 	if err != nil {
 		return Response{}, err
 	}
+
+	// Sync image references from Tiptap content.
+	image.SyncDocumentImages(ctx, store.Queries(), row.ID, req.Content)
+
 	return toResponse(row), nil
 }
 
@@ -238,6 +247,10 @@ func (s *Service) Restore(ctx context.Context, store *Store, docID, versionID uu
 	if err != nil {
 		return Response{}, err
 	}
+
+	// Sync image references from restored content.
+	image.SyncDocumentImages(ctx, store.Queries(), row.ID, ver.Content)
+
 	return toResponse(row), nil
 }
 

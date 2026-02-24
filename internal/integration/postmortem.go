@@ -142,6 +142,26 @@ func renderNode(b *strings.Builder, n tiptapNode) {
 		b.WriteString("<blockquote>")
 		renderChildren(b, n)
 		b.WriteString("</blockquote>")
+	case "hardBreak":
+		b.WriteString("<br>")
+	case "image":
+		src := ""
+		if s, ok := n.Attrs["src"].(string); ok {
+			src = htmlEscape(s)
+		}
+		alt := ""
+		if a, ok := n.Attrs["alt"].(string); ok {
+			alt = htmlEscape(a)
+		}
+		fmt.Fprintf(b, `<img src="%s" alt="%s">`, src, alt)
+	case "callout":
+		calloutType := "info"
+		if t, ok := n.Attrs["type"].(string); ok {
+			calloutType = htmlEscape(t)
+		}
+		fmt.Fprintf(b, `<div class="callout callout-%s">`, calloutType)
+		renderChildren(b, n)
+		b.WriteString("</div>")
 	case "horizontalRule":
 		b.WriteString("<hr>")
 	case "table":

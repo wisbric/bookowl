@@ -9,9 +9,15 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-const cacheTTL = 30 * time.Second
+const (
+	// freshTTL is how long a cached entry is considered fresh (served without re-fetching).
+	freshTTL = 30 * time.Second
+	// staleTTL is how long a cached entry is kept in Redis as a stale fallback.
+	staleTTL = 5 * time.Minute
+)
 
-// Cache wraps Redis for live context data with a 30s TTL.
+// Cache wraps Redis for live context data with a 30s fresh window
+// and 5-minute stale fallback for graceful degradation.
 type Cache struct {
 	rdb *redis.Client
 }
@@ -23,6 +29,11 @@ func NewCache(rdb *redis.Client) *Cache {
 type cachedEntry struct {
 	Data     json.RawMessage `json:"data"`
 	CachedAt time.Time       `json:"cached_at"`
+}
+
+// IsFresh returns true if the entry is within the 30s fresh window.
+func (e *cachedEntry) IsFresh() bool {
+	return time.Since(e.CachedAt) < freshTTL
 }
 
 func (c *Cache) Get(ctx context.Context, key string) (*cachedEntry, error) {
@@ -49,7 +60,7 @@ func (c *Cache) Set(ctx context.Context, key string, data json.RawMessage) error
 	if err != nil {
 		return fmt.Errorf("marshaling cache entry: %w", err)
 	}
-	return c.rdb.Set(ctx, key, val, cacheTTL).Err()
+	return c.rdb.Set(ctx, key, val, staleTTL).Err()
 }
 
 func OnCallKey(tenantSlug, rosterID string) string {

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { Editor } from '@tiptap/core'
 import {
   Pilcrow,
@@ -14,7 +15,7 @@ import {
   Minus,
   Info,
   AlertTriangle,
-  AlertOctagon,
+  OctagonAlert,
   Radio,
   Activity,
   Bell,
@@ -23,7 +24,7 @@ import {
 export interface SlashCommand {
   title: string
   description: string
-  icon: React.ReactNode
+  icon: ReactNode
   category: string
   action: (editor: Editor) => void
 }
@@ -105,12 +106,26 @@ export const slashCommands: SlashCommand[] = [
   },
   {
     title: 'Image',
-    description: 'Insert an image by URL',
+    description: 'Upload an image',
     icon: <Image className="h-4 w-4" />,
     category: 'Media & Content',
     action: (editor) => {
-      const url = window.prompt('Image URL:')
-      if (url) editor.chain().focus().setImage({ src: url }).run()
+      const input = document.createElement('input')
+      input.type = 'file'
+      input.accept = 'image/*'
+      input.onchange = async () => {
+        const file = input.files?.[0]
+        if (!file) return
+        try {
+          const { api } = await import('@/api/client')
+          type UploadResult = { url: string }
+          const result = await api.upload<UploadResult>('/images', file)
+          editor.chain().focus().setImage({ src: result.url }).run()
+        } catch {
+          // silently fail
+        }
+      }
+      input.click()
     },
   },
   {
@@ -139,7 +154,7 @@ export const slashCommands: SlashCommand[] = [
   {
     title: 'Danger',
     description: 'Danger callout box',
-    icon: <AlertOctagon className="h-4 w-4" />,
+    icon: <OctagonAlert className="h-4 w-4" />,
     category: 'Callouts',
     action: (editor) => editor.chain().focus().setCallout({ type: 'danger' }).run(),
   },

@@ -54,7 +54,30 @@ function del(path: string) {
   return request<void>(path, { method: 'DELETE' })
 }
 
-export const api = { get, post, put, del, ApiError }
+async function upload<T>(path: string, file: File): Promise<T> {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const headers: Record<string, string> = {
+    'Accept': 'application/json',
+    'X-Tenant-Slug': 'acme',
+  }
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  })
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText }))
+    throw new ApiError(res.status, body)
+  }
+
+  return res.json()
+}
+
+export const api = { get, post, put, del, upload, ApiError }
 
 // --- Types ---
 
@@ -115,6 +138,39 @@ export interface SearchResult {
   rank: number
   title_highlight: string
   content_highlight: string
+}
+
+export interface ImageUploadResponse {
+  id: string
+  url: string
+  filename: string
+  size: number
+  content_type: string
+}
+
+export interface DocumentVersion {
+  id: string
+  document_id: string
+  version: number
+  title: string
+  content: Record<string, unknown>
+  change_summary: string
+  created_by: string
+  created_at: string
+}
+
+export interface AdminConfig {
+  nightowl_api_url: string
+  nightowl_api_key: string
+}
+
+export interface HealthStatus {
+  status: string
+  database: string
+  redis: string
+  nightowl: string
+  version: string
+  uptime: string
 }
 
 export interface TreeNode {
