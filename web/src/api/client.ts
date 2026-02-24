@@ -232,7 +232,12 @@ export interface HealthStatus {
   checks: Record<string, string>
 }
 
-export interface TreeNode {
+export interface SpaceTree {
+  collections: TreeCollection[]
+  documents: TreeDoc[]
+}
+
+export interface TreeCollection {
   collection_id: string
   collection_name: string
   collection_slug: string

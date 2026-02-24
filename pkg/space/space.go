@@ -146,6 +146,12 @@ func buildTree(rows []dbtenant.GetSpaceTreeRow) []TreeNode {
 	return result
 }
 
+// SpaceTree is the full tree including uncollected documents.
+type SpaceTree struct {
+	Collections []TreeNode `json:"collections"`
+	Documents   []TreeDoc  `json:"documents"` // documents not in any collection
+}
+
 func toCreateParams(req CreateRequest, userID pgtype.UUID) dbtenant.CreateSpaceParams {
 	return dbtenant.CreateSpaceParams{
 		Name:        req.Name,

@@ -1,25 +1,50 @@
 import { Link } from '@tanstack/react-router'
 import { ChevronRight, FileText, FolderOpen, Plus } from 'lucide-react'
 import { useState } from 'react'
-import type { TreeNode, TreeDoc } from '@/api/client'
+import type { SpaceTree, TreeCollection, TreeDoc } from '@/api/client'
 import { CreateDocumentDialog } from '@/components/CreateDocumentDialog'
 
 interface SidebarTreeProps {
   spaceId: string
-  nodes: TreeNode[]
+  tree: SpaceTree
 }
 
-export function SidebarTree({ spaceId, nodes }: SidebarTreeProps) {
+export function SidebarTree({ spaceId, tree }: SidebarTreeProps) {
+  const [showCreateDoc, setShowCreateDoc] = useState(false)
+
   return (
-    <nav className="space-y-0.5">
-      {nodes.map((node) => (
-        <CollectionNode key={node.collection_id} spaceId={spaceId} node={node} />
-      ))}
-    </nav>
+    <>
+      <nav className="space-y-0.5">
+        {/* Uncollected documents (top-level, no collection) */}
+        {tree.documents?.map((doc) => (
+          <DocumentLink key={doc.id} spaceId={spaceId} doc={doc} />
+        ))}
+
+        {/* Collections with their documents */}
+        {tree.collections?.map((node) => (
+          <CollectionNode key={node.collection_id} spaceId={spaceId} node={node} />
+        ))}
+      </nav>
+
+      {/* Create doc at space level (no collection) */}
+      <button
+        onClick={() => setShowCreateDoc(true)}
+        className="mt-2 flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+      >
+        <Plus className="h-3 w-3" />
+        New document
+      </button>
+
+      <CreateDocumentDialog
+        open={showCreateDoc}
+        spaceId={spaceId}
+        onClose={() => setShowCreateDoc(false)}
+      />
+    </>
   )
 }
 
-function CollectionNode({ spaceId, node }: { spaceId: string; node: TreeNode }) {
+function CollectionNode({ spaceId, node }: { spaceId: string; node: TreeCollection }) {
   const [expanded, setExpanded] = useState(true)
   const [showCreateDoc, setShowCreateDoc] = useState(false)
 

@@ -126,3 +126,11 @@ FROM collections c
 LEFT JOIN documents d ON d.collection_id = c.id AND d.status != 'archived'
 WHERE c.space_id = $1
 ORDER BY c.position ASC, d.position ASC;
+
+-- name: GetUncollectedDocuments :many
+SELECT id, title, slug, doc_type, status, position, icon
+FROM documents
+WHERE space_id = $1
+  AND collection_id IS NULL
+  AND status != 'archived'
+ORDER BY position ASC, title ASC;

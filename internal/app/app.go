@@ -75,12 +75,17 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 
 	// Session manager for local admin and OIDC sessions.
 	var sess *session.Manager
-	if cfg.SecretKey != "" {
+	secretKey := cfg.SecretKey
+	if secretKey == "" && cfg.DevMode {
+		secretKey = "bookowl-dev-secret-key-do-not-use-in-production"
+		slog.Info("using dev secret key for session management")
+	}
+	if secretKey != "" {
 		sessionTTL, err := time.ParseDuration(cfg.SessionTTL)
 		if err != nil {
 			sessionTTL = 12 * time.Hour
 		}
-		sess = session.NewManager(cfg.SecretKey, sessionTTL)
+		sess = session.NewManager(secretKey, sessionTTL)
 		slog.Info("session management enabled", "ttl", sessionTTL)
 	} else {
 		slog.Info("session management disabled (no BOOKOWL_SECRET_KEY set)")

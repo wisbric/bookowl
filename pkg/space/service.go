@@ -106,10 +106,32 @@ func (s *Service) ListMembers(ctx context.Context, store *Store, spaceID uuid.UU
 	return result, nil
 }
 
-func (s *Service) GetTree(ctx context.Context, store *Store, spaceID uuid.UUID) ([]TreeNode, error) {
+func (s *Service) GetTree(ctx context.Context, store *Store, spaceID uuid.UUID) (SpaceTree, error) {
 	rows, err := store.GetTree(ctx, spaceID)
 	if err != nil {
-		return nil, err
+		return SpaceTree{}, err
 	}
-	return buildTree(rows), nil
+
+	uncollected, err := store.GetUncollectedDocuments(ctx, spaceID)
+	if err != nil {
+		return SpaceTree{}, err
+	}
+
+	docs := make([]TreeDoc, 0, len(uncollected))
+	for _, d := range uncollected {
+		docs = append(docs, TreeDoc{
+			ID:       d.ID,
+			Title:    d.Title,
+			Slug:     d.Slug,
+			DocType:  d.DocType,
+			Status:   d.Status,
+			Position: d.Position,
+			Icon:     db.TextPtr(d.Icon),
+		})
+	}
+
+	return SpaceTree{
+		Collections: buildTree(rows),
+		Documents:   docs,
+	}, nil
 }

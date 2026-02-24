@@ -74,6 +74,53 @@ func (q *Queries) GetSpaceTree(ctx context.Context, spaceID uuid.UUID) ([]GetSpa
 	return items, nil
 }
 
+const getUncollectedDocuments = `-- name: GetUncollectedDocuments :many
+SELECT id, title, slug, doc_type, status, position, icon
+FROM documents
+WHERE space_id = $1
+  AND collection_id IS NULL
+  AND status != 'archived'
+ORDER BY position ASC, title ASC
+`
+
+type GetUncollectedDocumentsRow struct {
+	ID       uuid.UUID   `json:"id"`
+	Title    string      `json:"title"`
+	Slug     string      `json:"slug"`
+	DocType  string      `json:"doc_type"`
+	Status   string      `json:"status"`
+	Position int32       `json:"position"`
+	Icon     pgtype.Text `json:"icon"`
+}
+
+func (q *Queries) GetUncollectedDocuments(ctx context.Context, spaceID uuid.UUID) ([]GetUncollectedDocumentsRow, error) {
+	rows, err := q.db.Query(ctx, getUncollectedDocuments, spaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetUncollectedDocumentsRow{}
+	for rows.Next() {
+		var i GetUncollectedDocumentsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Slug,
+			&i.DocType,
+			&i.Status,
+			&i.Position,
+			&i.Icon,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const searchDocuments = `-- name: SearchDocuments :many
 WITH fts AS (
     SELECT

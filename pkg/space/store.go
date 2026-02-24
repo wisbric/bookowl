@@ -113,3 +113,11 @@ func (s *Store) GetTree(ctx context.Context, spaceID uuid.UUID) ([]dbtenant.GetS
 	}
 	return rows, nil
 }
+
+func (s *Store) GetUncollectedDocuments(ctx context.Context, spaceID uuid.UUID) ([]dbtenant.GetUncollectedDocumentsRow, error) {
+	rows, err := s.q.GetUncollectedDocuments(ctx, spaceID)
+	if err != nil {
+		return nil, fmt.Errorf("getting uncollected documents: %w", err)
+	}
+	return rows, nil
+}

@@ -2,7 +2,7 @@ import { createFileRoute, Outlet } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/api/client'
 import { SidebarTree } from '@/components/layout/SidebarTree'
-import type { Space, TreeNode } from '@/api/client'
+import type { Space, SpaceTree } from '@/api/client'
 
 export const Route = createFileRoute('/spaces/$spaceId')({
   component: SpaceLayout,
@@ -18,7 +18,7 @@ function SpaceLayout() {
 
   const { data: tree } = useQuery({
     queryKey: ['space-tree', spaceId],
-    queryFn: () => api.get<TreeNode[]>(`/spaces/${spaceId}/tree`),
+    queryFn: () => api.get<SpaceTree>(`/spaces/${spaceId}/tree`),
   })
 
   return (
@@ -37,7 +37,7 @@ function SpaceLayout() {
             )}
           </div>
         )}
-        {tree && <SidebarTree spaceId={spaceId} nodes={tree} />}
+        {tree && <SidebarTree spaceId={spaceId} tree={tree} />}
       </aside>
       <div className="flex-1 overflow-y-auto">
         <Outlet />
