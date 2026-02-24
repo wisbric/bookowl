@@ -566,6 +566,13 @@ func createDocIfNotExists(ctx context.Context, q *dbtenant.Queries, params dbten
 		Slug:    params.Slug,
 	})
 	if err == nil {
+		// Document exists — ensure collection_id is set correctly.
+		if params.CollectionID.Valid && !existing.CollectionID.Valid {
+			_ = q.MoveDocumentToCollection(ctx, dbtenant.MoveDocumentToCollectionParams{
+				CollectionID: params.CollectionID,
+				ID:           existing.ID,
+			})
+		}
 		return existing, nil
 	}
 	return q.CreateDocument(ctx, params)

@@ -98,6 +98,11 @@ WHERE doc_type = 'runbook' AND status = 'published';
 SELECT id FROM documents
 WHERE nightowl_alert_id = $1;
 
+-- name: MoveDocumentToCollection :exec
+UPDATE documents
+SET collection_id = $1, updated_at = now()
+WHERE id = $2;
+
 -- name: SearchRunbooks :many
 SELECT
     d.id, d.title, d.slug, d.tags, d.updated_at,

@@ -606,6 +606,22 @@ func (q *Queries) ListRunbooksWithSpace(ctx context.Context, arg ListRunbooksWit
 	return items, nil
 }
 
+const moveDocumentToCollection = `-- name: MoveDocumentToCollection :exec
+UPDATE documents
+SET collection_id = $1, updated_at = now()
+WHERE id = $2
+`
+
+type MoveDocumentToCollectionParams struct {
+	CollectionID pgtype.UUID `json:"collection_id"`
+	ID           uuid.UUID   `json:"id"`
+}
+
+func (q *Queries) MoveDocumentToCollection(ctx context.Context, arg MoveDocumentToCollectionParams) error {
+	_, err := q.db.Exec(ctx, moveDocumentToCollection, arg.CollectionID, arg.ID)
+	return err
+}
+
 const searchRunbooks = `-- name: SearchRunbooks :many
 SELECT
     d.id, d.title, d.slug, d.tags, d.updated_at,
