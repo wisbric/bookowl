@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState, useEffect } from 'react'
-import { Settings, Plug, Activity, Key, CheckCircle, XCircle, Loader2 } from 'lucide-react'
+import { Settings, Plug, Activity, Key, CheckCircle, XCircle, LoaderCircle } from 'lucide-react'
 import { api } from '@/api/client'
 import type { AdminConfig } from '@/api/client'
 
@@ -113,7 +113,7 @@ function NightOwlConfigSection() {
             className="inline-flex items-center gap-1.5 rounded-md border border-border px-4 py-2 text-sm hover:bg-muted disabled:opacity-50"
           >
             {testMutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <LoaderCircle className="h-4 w-4 animate-spin" />
             ) : (
               <Activity className="h-4 w-4" />
             )}
