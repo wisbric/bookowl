@@ -19,6 +19,7 @@ import {
   Radio,
   Activity,
   Bell,
+  GitBranch,
 } from 'lucide-react'
 
 export interface SlashCommand {
@@ -134,6 +135,18 @@ export const slashCommands: SlashCommand[] = [
     icon: <Quote className="h-4 w-4" />,
     category: 'Media & Content',
     action: (editor) => editor.chain().focus().toggleBlockquote().run(),
+  },
+  {
+    title: 'Diagram',
+    description: 'Draw.io diagram or flowchart',
+    icon: <GitBranch className="h-4 w-4" />,
+    category: 'Media & Content',
+    action: (editor) =>
+      editor
+        .chain()
+        .focus()
+        .insertContent({ type: 'diagramBlock', attrs: { xml: '' } })
+        .run(),
   },
 
   // Callouts

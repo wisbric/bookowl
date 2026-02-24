@@ -1,5 +1,18 @@
 const API_BASE = '/api/v1'
 
+type TokenProvider = () => Promise<string | null>
+
+let _tokenProvider: TokenProvider | null = null
+let _sessionMode = false
+
+export function setTokenProvider(provider: TokenProvider) {
+  _tokenProvider = provider
+}
+
+export function setSessionMode(enabled: boolean) {
+  _sessionMode = enabled
+}
+
 class ApiError extends Error {
   constructor(
     public status: number,
@@ -16,10 +29,19 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     ...(init?.headers as Record<string, string>),
   }
 
-  // Dev mode: include tenant slug header.
-  headers['X-Tenant-Slug'] = 'acme'
+  // Attach auth: Bearer token (OIDC), session cookie (automatic), or dev fallback.
+  if (_sessionMode) {
+    // Cookie-based auth — browser sends bw_session cookie automatically.
+  } else if (_tokenProvider) {
+    const token = await _tokenProvider()
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+  } else {
+    headers['X-Tenant-Slug'] = 'acme'
+  }
 
-  const res = await fetch(`${API_BASE}${path}`, { ...init, headers })
+  const res = await fetch(`${API_BASE}${path}`, { ...init, headers, credentials: 'same-origin' })
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: res.statusText }))
@@ -60,13 +82,25 @@ async function upload<T>(path: string, file: File): Promise<T> {
 
   const headers: Record<string, string> = {
     'Accept': 'application/json',
-    'X-Tenant-Slug': 'acme',
+  }
+
+  // Attach auth: Bearer token (OIDC), session cookie (automatic), or dev fallback.
+  if (_sessionMode) {
+    // Cookie-based auth — browser sends bw_session cookie automatically.
+  } else if (_tokenProvider) {
+    const token = await _tokenProvider()
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+  } else {
+    headers['X-Tenant-Slug'] = 'acme'
   }
 
   const res = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
     headers,
     body: formData,
+    credentials: 'same-origin',
   })
 
   if (!res.ok) {
@@ -164,13 +198,38 @@ export interface AdminConfig {
   nightowl_api_key: string
 }
 
+export interface OIDCConfig {
+  issuer_url: string
+  client_id: string
+  client_secret: string
+  allowed_groups: string[]
+  admin_groups: string[]
+  editor_groups: string[]
+  enabled: boolean
+  last_tested_at?: string
+  last_test_result?: string
+}
+
+export interface OIDCTestDetails {
+  discovery_ok: boolean
+  jwks_uri?: string
+  jwks_ok: boolean
+  client_credentials_ok: boolean
+  supported_scopes?: string[]
+  has_groups_scope: boolean
+}
+
+export interface OIDCTestResponse {
+  ok: boolean
+  latency_ms: number
+  issuer?: string
+  error?: string
+  details: OIDCTestDetails
+}
+
 export interface HealthStatus {
   status: string
-  database: string
-  redis: string
-  nightowl: string
-  version: string
-  uptime: string
+  checks: Record<string, string>
 }
 
 export interface TreeNode {
@@ -191,4 +250,82 @@ export interface TreeDoc {
   status: string
   position: number
   icon?: string
+}
+
+export interface ProfileResponse {
+  id: string
+  email: string
+  display_name: string
+  timezone: string
+  role: string
+  auth_method: string
+  created_at?: string
+}
+
+export interface PersonalToken {
+  id: string
+  name: string
+  prefix: string
+  created_at: string
+  last_used_at?: string
+  expires_at?: string
+}
+
+export interface PersonalTokenCreated extends PersonalToken {
+  plaintext: string
+}
+
+export interface Template {
+  id: string
+  name: string
+  description?: string
+  doc_type: string
+  content: Record<string, unknown>
+  icon?: string
+  is_system: boolean
+  is_global: boolean
+  space_id?: string
+  created_by?: string
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface CommentAuthor {
+  id: string
+  display_name: string
+  initials: string
+  avatar_url?: string
+}
+
+export interface Comment {
+  id: string
+  document_id: string
+  parent_id: string | null
+  author: CommentAuthor
+  body: string
+  body_rendered: string
+  is_resolved: boolean
+  is_deleted: boolean
+  edited_at: string | null
+  created_at: string
+  replies: Comment[]
+}
+
+export interface CommentCount {
+  count: number
+}
+
+export interface Notification {
+  id: string
+  type: string
+  document_id: string | null
+  comment_id: string | null
+  actor: CommentAuthor | null
+  is_read: boolean
+  created_at: string
+}
+
+export interface NotificationCount {
+  count: number
 }

@@ -1,0 +1,3 @@
+ALTER TABLE users DROP COLUMN IF EXISTS auth_method;
+ALTER TABLE users DROP COLUMN IF EXISTS avatar_storage_id;
+ALTER TABLE users DROP COLUMN IF EXISTS timezone;

@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const deactivateUser = `-- name: DeactivateUser :exec
@@ -23,7 +24,7 @@ func (q *Queries) DeactivateUser(ctx context.Context, id uuid.UUID) error {
 }
 
 const getUserByExternalID = `-- name: GetUserByExternalID :one
-SELECT id, external_id, email, display_name, role, is_active, created_at, updated_at FROM users
+SELECT id, external_id, email, display_name, role, is_active, created_at, updated_at, timezone, avatar_storage_id, auth_method FROM users
 WHERE external_id = $1
 `
 
@@ -39,12 +40,15 @@ func (q *Queries) GetUserByExternalID(ctx context.Context, externalID string) (U
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Timezone,
+		&i.AvatarStorageID,
+		&i.AuthMethod,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, external_id, email, display_name, role, is_active, created_at, updated_at FROM users
+SELECT id, external_id, email, display_name, role, is_active, created_at, updated_at, timezone, avatar_storage_id, auth_method FROM users
 WHERE id = $1
 `
 
@@ -60,12 +64,52 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Timezone,
+		&i.AvatarStorageID,
+		&i.AuthMethod,
 	)
 	return i, err
 }
 
+const getUsersByEmails = `-- name: GetUsersByEmails :many
+SELECT id, external_id, email, display_name, role, is_active, created_at, updated_at, timezone, avatar_storage_id, auth_method FROM users
+WHERE email = ANY($1::text[]) AND is_active = true
+`
+
+func (q *Queries) GetUsersByEmails(ctx context.Context, emails []string) ([]User, error) {
+	rows, err := q.db.Query(ctx, getUsersByEmails, emails)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []User{}
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.ExternalID,
+			&i.Email,
+			&i.DisplayName,
+			&i.Role,
+			&i.IsActive,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Timezone,
+			&i.AvatarStorageID,
+			&i.AuthMethod,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUsers = `-- name: ListUsers :many
-SELECT id, external_id, email, display_name, role, is_active, created_at, updated_at FROM users
+SELECT id, external_id, email, display_name, role, is_active, created_at, updated_at, timezone, avatar_storage_id, auth_method FROM users
 WHERE is_active = true
 ORDER BY display_name
 LIMIT $1 OFFSET $2
@@ -94,6 +138,9 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, e
 			&i.IsActive,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Timezone,
+			&i.AvatarStorageID,
+			&i.AuthMethod,
 		); err != nil {
 			return nil, err
 		}
@@ -105,11 +152,74 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, e
 	return items, nil
 }
 
+const updateUserAvatar = `-- name: UpdateUserAvatar :one
+UPDATE users
+SET avatar_storage_id = $2, updated_at = now()
+WHERE id = $1
+RETURNING id, external_id, email, display_name, role, is_active, created_at, updated_at, timezone, avatar_storage_id, auth_method
+`
+
+type UpdateUserAvatarParams struct {
+	ID              uuid.UUID   `json:"id"`
+	AvatarStorageID pgtype.UUID `json:"avatar_storage_id"`
+}
+
+func (q *Queries) UpdateUserAvatar(ctx context.Context, arg UpdateUserAvatarParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUserAvatar, arg.ID, arg.AvatarStorageID)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.ExternalID,
+		&i.Email,
+		&i.DisplayName,
+		&i.Role,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Timezone,
+		&i.AvatarStorageID,
+		&i.AuthMethod,
+	)
+	return i, err
+}
+
+const updateUserProfile = `-- name: UpdateUserProfile :one
+UPDATE users
+SET display_name = $2, timezone = $3, updated_at = now()
+WHERE id = $1
+RETURNING id, external_id, email, display_name, role, is_active, created_at, updated_at, timezone, avatar_storage_id, auth_method
+`
+
+type UpdateUserProfileParams struct {
+	ID          uuid.UUID `json:"id"`
+	DisplayName string    `json:"display_name"`
+	Timezone    string    `json:"timezone"`
+}
+
+func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUserProfile, arg.ID, arg.DisplayName, arg.Timezone)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.ExternalID,
+		&i.Email,
+		&i.DisplayName,
+		&i.Role,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Timezone,
+		&i.AvatarStorageID,
+		&i.AuthMethod,
+	)
+	return i, err
+}
+
 const updateUserRole = `-- name: UpdateUserRole :one
 UPDATE users
 SET role = $2, updated_at = now()
 WHERE id = $1
-RETURNING id, external_id, email, display_name, role, is_active, created_at, updated_at
+RETURNING id, external_id, email, display_name, role, is_active, created_at, updated_at, timezone, avatar_storage_id, auth_method
 `
 
 type UpdateUserRoleParams struct {
@@ -129,6 +239,9 @@ func (q *Queries) UpdateUserRole(ctx context.Context, arg UpdateUserRoleParams) 
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Timezone,
+		&i.AvatarStorageID,
+		&i.AuthMethod,
 	)
 	return i, err
 }
@@ -140,7 +253,7 @@ ON CONFLICT (external_id) DO UPDATE
 SET email = EXCLUDED.email,
     display_name = EXCLUDED.display_name,
     updated_at = now()
-RETURNING id, external_id, email, display_name, role, is_active, created_at, updated_at
+RETURNING id, external_id, email, display_name, role, is_active, created_at, updated_at, timezone, avatar_storage_id, auth_method
 `
 
 type UpsertUserParams struct {
@@ -167,6 +280,9 @@ func (q *Queries) UpsertUser(ctx context.Context, arg UpsertUserParams) (User, e
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Timezone,
+		&i.AvatarStorageID,
+		&i.AuthMethod,
 	)
 	return i, err
 }

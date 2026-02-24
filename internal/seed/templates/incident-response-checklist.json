@@ -1,0 +1,40 @@
+{
+  "name": "Incident Response Checklist",
+  "description": "Task list format for live incident response with triage, communication, and resolution steps",
+  "doc_type": "runbook",
+  "icon": "shield-alert",
+  "sort_order": 4,
+  "content": {
+    "type": "doc",
+    "content": [
+      { "type": "heading", "attrs": {"level": 1}, "content": [{"type": "text", "text": "Incident Response: {{incident_title}}"}] },
+      { "type": "paragraph", "content": [{"type": "text", "marks": [{"type": "bold"}], "text": "Severity: "}, {"type": "text", "text": "{{severity}}"}] },
+      { "type": "paragraph", "content": [{"type": "text", "marks": [{"type": "bold"}], "text": "Incident Commander: "}, {"type": "text", "text": "{{incident_commander}}"}] },
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Triage"}] },
+      { "type": "taskList", "content": [
+        { "type": "taskItem", "attrs": {"checked": false}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Assess severity and impact"}]}] },
+        { "type": "taskItem", "attrs": {"checked": false}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Identify affected services and users"}]}] },
+        { "type": "taskItem", "attrs": {"checked": false}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Check monitoring dashboards and recent deployments"}]}] }
+      ]},
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Communication"}] },
+      { "type": "taskList", "content": [
+        { "type": "taskItem", "attrs": {"checked": false}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Notify stakeholders via Slack #incidents channel"}]}] },
+        { "type": "taskItem", "attrs": {"checked": false}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Update status page if user-facing"}]}] },
+        { "type": "taskItem", "attrs": {"checked": false}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Schedule regular updates every 30 minutes"}]}] }
+      ]},
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Resolution"}] },
+      { "type": "taskList", "content": [
+        { "type": "taskItem", "attrs": {"checked": false}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Identify root cause"}]}] },
+        { "type": "taskItem", "attrs": {"checked": false}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Apply fix or rollback"}]}] },
+        { "type": "taskItem", "attrs": {"checked": false}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Verify fix in production"}]}] },
+        { "type": "taskItem", "attrs": {"checked": false}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Monitor for recurrence (30 min)"}]}] }
+      ]},
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Post-Incident"}] },
+      { "type": "taskList", "content": [
+        { "type": "taskItem", "attrs": {"checked": false}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Send all-clear notification"}]}] },
+        { "type": "taskItem", "attrs": {"checked": false}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Schedule post-mortem within 48 hours"}]}] },
+        { "type": "taskItem", "attrs": {"checked": false}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Create post-mortem document"}]}] }
+      ]}
+    ]
+  }
+}

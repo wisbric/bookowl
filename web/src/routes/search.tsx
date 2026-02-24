@@ -17,9 +17,9 @@ function SearchPage() {
   const navigate = useNavigate()
   const [query, setQuery] = useState(q)
 
-  const { data, isLoading } = useQuery({
+  const { data: results, isLoading } = useQuery({
     queryKey: ['search', q],
-    queryFn: () => api.get<{ items: SearchResult[] }>(`/search?q=${encodeURIComponent(q)}`),
+    queryFn: () => api.get<SearchResult[]>(`/search?q=${encodeURIComponent(q)}`),
     enabled: q.length > 0,
   })
 
@@ -47,15 +47,15 @@ function SearchPage() {
         <p className="text-muted-foreground">Searching...</p>
       )}
 
-      {data?.items && data.items.length > 0 && (
+      {results && results.length > 0 && (
         <div className="space-y-4">
-          {data.items.map((result) => (
+          {results.map((result) => (
             <SearchResultCard key={result.id} result={result} />
           ))}
         </div>
       )}
 
-      {data?.items && data.items.length === 0 && q && (
+      {results && results.length === 0 && q && (
         <p className="text-muted-foreground">No results found for "{q}".</p>
       )}
     </div>

@@ -1,0 +1,34 @@
+{
+  "name": "Meeting Notes",
+  "description": "Structured meeting notes with agenda, attendees, decisions, and action items",
+  "doc_type": "document",
+  "icon": "notepad-text",
+  "sort_order": 6,
+  "content": {
+    "type": "doc",
+    "content": [
+      { "type": "heading", "attrs": {"level": 1}, "content": [{"type": "text", "text": "Meeting: {{meeting_title}}"}] },
+      { "type": "paragraph", "content": [{"type": "text", "marks": [{"type": "bold"}], "text": "Date: "}, {"type": "text", "text": "{{date}}"}] },
+      { "type": "paragraph", "content": [{"type": "text", "marks": [{"type": "bold"}], "text": "Attendees: "}, {"type": "text", "text": "{{attendees}}"}] },
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Agenda"}] },
+      { "type": "orderedList", "content": [
+        { "type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Topic 1"}]}] },
+        { "type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Topic 2"}]}] },
+        { "type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Topic 3"}]}] }
+      ]},
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Discussion"}] },
+      { "type": "paragraph", "content": [{"type": "text", "text": "Key points discussed during the meeting."}] },
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Decisions"}] },
+      { "type": "bulletList", "content": [
+        { "type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Decision 1: ..."}]}] }
+      ]},
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Action Items"}] },
+      { "type": "taskList", "content": [
+        { "type": "taskItem", "attrs": {"checked": false}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Action item 1 — Owner: {{owner}}"}]}] },
+        { "type": "taskItem", "attrs": {"checked": false}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Action item 2 — Owner: {{owner}}"}]}] }
+      ]},
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Next Meeting"}] },
+      { "type": "paragraph", "content": [{"type": "text", "text": "Date and topics for the follow-up meeting."}] }
+    ]
+  }
+}

@@ -22,6 +22,14 @@ All design decisions are captured in `docs/`. Always read the relevant spec befo
 - `docs/05-nightowl-integration.md` — Integration contract with NightOwl (REST API, runbook migration, post-mortem creation, live blocks)
 - `docs/06-branding.md` — BookOwl branding (follows NightOwl design system)
 - `docs/07-deployment.md` — Kubernetes deployment, Helm chart, CI/CD
+- `docs/08-tasks.md` — Implementation task checklist and progress
+- `docs/09-image-storage.md` — Image upload and storage backends (local, S3)
+- `docs/10-diagrams.md` — draw.io diagram blocks in the editor
+- `docs/11-oidc-admin.md` — OIDC/Keycloak configuration UI
+- `docs/12-login-and-profile.md` — Login, local admin, user profiles, personal API tokens
+- `docs/13-export.md` — PDF, Markdown, HTML export
+- `docs/14-comments.md` — Threaded comments, @mentions, and notifications
+- `docs/15-templates.md` — Template library (system + user templates)
 
 ## Branding
 
@@ -105,6 +113,8 @@ cd web && npm run dev         # Frontend on :3001 (proxies /api to :8081)
 ```
 
 - Dev API key: `bw_dev_seed_key_do_not_use_in_production`
+- Local admin: username `admin`, password `bookowl-admin` (dev mode only; forced password change on first login)
+- Login URL: `http://localhost:3001/login`
 - Env vars prefix: `BOOKOWL_` (e.g., `BOOKOWL_MODE`, `BOOKOWL_PORT`)
 - DB credentials (dev): `bookowl:bookowl@localhost:5433/bookowl`
 - NightOwl API (dev): `BOOKOWL_NIGHTOWL_API_URL=http://localhost:8080`

@@ -9,16 +9,32 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type ApiKey struct {
-	ID          uuid.UUID `json:"id"`
-	TenantID    uuid.UUID `json:"tenant_id"`
-	KeyHash     string    `json:"key_hash"`
-	KeyPrefix   string    `json:"key_prefix"`
-	Description string    `json:"description"`
-	Role        string    `json:"role"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID          uuid.UUID          `json:"id"`
+	TenantID    uuid.UUID          `json:"tenant_id"`
+	KeyHash     string             `json:"key_hash"`
+	KeyPrefix   string             `json:"key_prefix"`
+	Description string             `json:"description"`
+	Role        string             `json:"role"`
+	CreatedAt   time.Time          `json:"created_at"`
+	UserID      pgtype.UUID        `json:"user_id"`
+	IsPersonal  bool               `json:"is_personal"`
+	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
+	LastUsedAt  pgtype.Timestamptz `json:"last_used_at"`
+}
+
+type LocalAdmin struct {
+	ID           uuid.UUID          `json:"id"`
+	TenantSlug   string             `json:"tenant_slug"`
+	Username     string             `json:"username"`
+	PasswordHash string             `json:"password_hash"`
+	MustChange   bool               `json:"must_change"`
+	LastLoginAt  pgtype.Timestamptz `json:"last_login_at"`
+	CreatedAt    time.Time          `json:"created_at"`
+	UpdatedAt    time.Time          `json:"updated_at"`
 }
 
 type Tenant struct {

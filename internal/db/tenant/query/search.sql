@@ -1,49 +1,120 @@
 -- name: SearchDocuments :many
-SELECT
-    d.id, d.title, d.doc_type, d.slug, d.space_id, d.collection_id,
-    s.name AS space_name, s.slug AS space_slug,
-    ts_rank(d.search_vector, plainto_tsquery('english', @query::text)) AS rank,
-    ts_headline('english', d.title, plainto_tsquery('english', @query::text)) AS title_highlight,
-    ts_headline('english', d.content_text, plainto_tsquery('english', @query::text),
-        'StartSel=<mark>, StopSel=</mark>, MaxWords=30, MinWords=15') AS content_highlight
-FROM documents d
-JOIN spaces s ON s.id = d.space_id
-WHERE d.search_vector @@ plainto_tsquery('english', @query::text)
-  AND d.status != 'archived'
-ORDER BY rank DESC
-LIMIT @result_limit OFFSET @result_offset;
+WITH fts AS (
+    SELECT
+        d.id, d.title, d.doc_type, d.slug, d.space_id, d.collection_id,
+        s.name AS space_name, s.slug AS space_slug,
+        ts_rank(d.search_vector, plainto_tsquery('english', @query::text)) AS rank,
+        ts_headline('english', d.title, plainto_tsquery('english', @query::text)) AS title_highlight,
+        ts_headline('english', d.content_text, plainto_tsquery('english', @query::text),
+            'StartSel=<mark>, StopSel=</mark>, MaxWords=30, MinWords=15') AS content_highlight
+    FROM documents d
+    JOIN spaces s ON s.id = d.space_id
+    WHERE d.search_vector @@ plainto_tsquery('english', @query::text)
+      AND d.status != 'archived'
+    ORDER BY rank DESC
+    LIMIT @result_limit OFFSET @result_offset
+),
+fuzzy AS (
+    SELECT
+        d.id, d.title, d.doc_type, d.slug, d.space_id, d.collection_id,
+        s.name AS space_name, s.slug AS space_slug,
+        GREATEST(
+            similarity(d.title, @query::text),
+            similarity(d.content_text, @query::text) * 0.5
+        )::float4 AS rank,
+        d.title AS title_highlight,
+        '' AS content_highlight
+    FROM documents d
+    JOIN spaces s ON s.id = d.space_id
+    WHERE d.status != 'archived'
+      AND (d.title % @query::text OR d.content_text % @query::text)
+      AND NOT EXISTS (SELECT 1 FROM fts)
+    ORDER BY rank DESC
+    LIMIT @result_limit OFFSET @result_offset
+)
+SELECT * FROM fts
+UNION ALL
+SELECT * FROM fuzzy;
 
 -- name: SearchDocumentsBySpace :many
-SELECT
-    d.id, d.title, d.doc_type, d.slug, d.space_id, d.collection_id,
-    s.name AS space_name, s.slug AS space_slug,
-    ts_rank(d.search_vector, plainto_tsquery('english', @query::text)) AS rank,
-    ts_headline('english', d.title, plainto_tsquery('english', @query::text)) AS title_highlight,
-    ts_headline('english', d.content_text, plainto_tsquery('english', @query::text),
-        'StartSel=<mark>, StopSel=</mark>, MaxWords=30, MinWords=15') AS content_highlight
-FROM documents d
-JOIN spaces s ON s.id = d.space_id
-WHERE d.search_vector @@ plainto_tsquery('english', @query::text)
-  AND d.status != 'archived'
-  AND d.space_id = @space_id
-ORDER BY rank DESC
-LIMIT @result_limit OFFSET @result_offset;
+WITH fts AS (
+    SELECT
+        d.id, d.title, d.doc_type, d.slug, d.space_id, d.collection_id,
+        s.name AS space_name, s.slug AS space_slug,
+        ts_rank(d.search_vector, plainto_tsquery('english', @query::text)) AS rank,
+        ts_headline('english', d.title, plainto_tsquery('english', @query::text)) AS title_highlight,
+        ts_headline('english', d.content_text, plainto_tsquery('english', @query::text),
+            'StartSel=<mark>, StopSel=</mark>, MaxWords=30, MinWords=15') AS content_highlight
+    FROM documents d
+    JOIN spaces s ON s.id = d.space_id
+    WHERE d.search_vector @@ plainto_tsquery('english', @query::text)
+      AND d.status != 'archived'
+      AND d.space_id = @space_id
+    ORDER BY rank DESC
+    LIMIT @result_limit OFFSET @result_offset
+),
+fuzzy AS (
+    SELECT
+        d.id, d.title, d.doc_type, d.slug, d.space_id, d.collection_id,
+        s.name AS space_name, s.slug AS space_slug,
+        GREATEST(
+            similarity(d.title, @query::text),
+            similarity(d.content_text, @query::text) * 0.5
+        )::float4 AS rank,
+        d.title AS title_highlight,
+        '' AS content_highlight
+    FROM documents d
+    JOIN spaces s ON s.id = d.space_id
+    WHERE d.status != 'archived'
+      AND d.space_id = @space_id
+      AND (d.title % @query::text OR d.content_text % @query::text)
+      AND NOT EXISTS (SELECT 1 FROM fts)
+    ORDER BY rank DESC
+    LIMIT @result_limit OFFSET @result_offset
+)
+SELECT * FROM fts
+UNION ALL
+SELECT * FROM fuzzy;
 
 -- name: SearchDocumentsByType :many
-SELECT
-    d.id, d.title, d.doc_type, d.slug, d.space_id, d.collection_id,
-    s.name AS space_name, s.slug AS space_slug,
-    ts_rank(d.search_vector, plainto_tsquery('english', @query::text)) AS rank,
-    ts_headline('english', d.title, plainto_tsquery('english', @query::text)) AS title_highlight,
-    ts_headline('english', d.content_text, plainto_tsquery('english', @query::text),
-        'StartSel=<mark>, StopSel=</mark>, MaxWords=30, MinWords=15') AS content_highlight
-FROM documents d
-JOIN spaces s ON s.id = d.space_id
-WHERE d.search_vector @@ plainto_tsquery('english', @query::text)
-  AND d.status != 'archived'
-  AND d.doc_type = @doc_type
-ORDER BY rank DESC
-LIMIT @result_limit OFFSET @result_offset;
+WITH fts AS (
+    SELECT
+        d.id, d.title, d.doc_type, d.slug, d.space_id, d.collection_id,
+        s.name AS space_name, s.slug AS space_slug,
+        ts_rank(d.search_vector, plainto_tsquery('english', @query::text)) AS rank,
+        ts_headline('english', d.title, plainto_tsquery('english', @query::text)) AS title_highlight,
+        ts_headline('english', d.content_text, plainto_tsquery('english', @query::text),
+            'StartSel=<mark>, StopSel=</mark>, MaxWords=30, MinWords=15') AS content_highlight
+    FROM documents d
+    JOIN spaces s ON s.id = d.space_id
+    WHERE d.search_vector @@ plainto_tsquery('english', @query::text)
+      AND d.status != 'archived'
+      AND d.doc_type = @doc_type
+    ORDER BY rank DESC
+    LIMIT @result_limit OFFSET @result_offset
+),
+fuzzy AS (
+    SELECT
+        d.id, d.title, d.doc_type, d.slug, d.space_id, d.collection_id,
+        s.name AS space_name, s.slug AS space_slug,
+        GREATEST(
+            similarity(d.title, @query::text),
+            similarity(d.content_text, @query::text) * 0.5
+        )::float4 AS rank,
+        d.title AS title_highlight,
+        '' AS content_highlight
+    FROM documents d
+    JOIN spaces s ON s.id = d.space_id
+    WHERE d.status != 'archived'
+      AND d.doc_type = @doc_type
+      AND (d.title % @query::text OR d.content_text % @query::text)
+      AND NOT EXISTS (SELECT 1 FROM fts)
+    ORDER BY rank DESC
+    LIMIT @result_limit OFFSET @result_offset
+)
+SELECT * FROM fts
+UNION ALL
+SELECT * FROM fuzzy;
 
 -- name: GetSpaceTree :many
 SELECT

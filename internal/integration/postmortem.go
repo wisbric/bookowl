@@ -1,10 +1,13 @@
 package integration
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
+
+	dbtenant "github.com/wisbric/bookowl/internal/db/tenant"
 )
 
 // postMortemTemplate is the Tiptap JSON template from docs/04-editor.md section 8.
@@ -32,6 +35,23 @@ const postMortemTemplate = `{
     { "type": "paragraph", "content": [{"type": "text", "text": "What did we learn? What do we do differently next time?"}] }
   ]
 }`
+
+// buildPostMortemFromDB tries to use the system post-mortem template from the
+// database. If not found, it falls back to the hardcoded template.
+func buildPostMortemFromDB(ctx context.Context, q *dbtenant.Queries, incident PostMortemIncident) json.RawMessage {
+	tmpl, err := q.GetSystemTemplateByDocType(ctx, "post-mortem")
+	if err == nil {
+		// Substitute {{variable}} placeholders in the template content.
+		content := string(tmpl.Content)
+		content = strings.ReplaceAll(content, "{{incident_title}}", escapeJSON(incident.Title))
+		content = strings.ReplaceAll(content, "{{date}}", escapeJSON(incident.CreatedAt))
+		content = strings.ReplaceAll(content, "{{severity}}", escapeJSON(incident.Severity))
+		content = strings.ReplaceAll(content, "{{resolved_by}}", escapeJSON(incident.ResolvedBy))
+		return json.RawMessage(content)
+	}
+	// Fall back to hardcoded template.
+	return buildPostMortemContent(incident)
+}
 
 func buildPostMortemContent(incident PostMortemIncident) json.RawMessage {
 	content := postMortemTemplate
@@ -162,6 +182,17 @@ func renderNode(b *strings.Builder, n tiptapNode) {
 		fmt.Fprintf(b, `<div class="callout callout-%s">`, calloutType)
 		renderChildren(b, n)
 		b.WriteString("</div>")
+	case "diagramBlock":
+		xmlAttr := ""
+		if v, ok := n.Attrs["xml"].(string); ok {
+			xmlAttr = v
+		}
+		if xmlAttr == "" {
+			return
+		}
+		b.WriteString(`<div class="diagram-block-placeholder" style="border:1px dashed #666;padding:12px;border-radius:4px;color:#999;font-size:13px;">`)
+		b.WriteString(`[Diagram — view in BookOwl for interactive version]`)
+		b.WriteString(`</div>`)
 	case "horizontalRule":
 		b.WriteString("<hr>")
 	case "table":

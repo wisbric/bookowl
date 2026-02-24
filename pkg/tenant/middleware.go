@@ -1,6 +1,7 @@
 package tenant
 
 import (
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -78,8 +79,60 @@ func (m *ResolveMiddleware) Resolve(next http.Handler) http.Handler {
 		ctx = ContextWithTenant(ctx, tenant)
 		ctx = ContextWithConn(ctx, conn)
 
-		// If OIDC user, resolve user ID in tenant schema.
-		if identity.ExternalID != "" {
+		// If OIDC user, resolve or auto-provision user in tenant schema.
+		if identity.ExternalID != "" && identity.Method == "oidc" {
+			// Determine role from group mapping if OIDC groups are configured.
+			provisionRole := "editor"
+			if len(identity.Groups) > 0 {
+				groupCfg := loadOIDCGroupConfig(tenant.Config)
+				if groupCfg != nil {
+					mapped := auth.MapGroupsToRole(identity.Groups, *groupCfg)
+					if mapped == "" {
+						httpserver.RespondError(w, http.StatusForbidden, "not in any allowed group")
+						return
+					}
+					provisionRole = mapped
+				}
+			}
+
+			q := dbtenant.New(conn)
+			user, err := q.GetUserByExternalID(ctx, identity.ExternalID)
+			if err != nil {
+				// User not found — auto-provision via upsert.
+				slog.Info("auto-provisioning OIDC user", "external_id", identity.ExternalID, "email", identity.Email, "role", provisionRole)
+				user, err = q.UpsertUser(ctx, dbtenant.UpsertUserParams{
+					ExternalID:  identity.ExternalID,
+					Email:       identity.Email,
+					DisplayName: identity.Name,
+					Role:        provisionRole,
+				})
+				if err != nil {
+					slog.Error("auto-provisioning user failed", "error", err)
+					httpserver.RespondError(w, http.StatusInternalServerError, "user provisioning failed")
+					return
+				}
+			} else if len(identity.Groups) > 0 {
+				// Existing user: update role from groups if group config is set.
+				groupCfg := loadOIDCGroupConfig(tenant.Config)
+				if groupCfg != nil {
+					mapped := auth.MapGroupsToRole(identity.Groups, *groupCfg)
+					if mapped == "" {
+						httpserver.RespondError(w, http.StatusForbidden, "not in any allowed group")
+						return
+					}
+					provisionRole = mapped
+				}
+			}
+			ctx = ContextWithUserID(ctx, user.ID)
+			// Use group-mapped role if available, otherwise sync from DB.
+			if len(identity.Groups) > 0 {
+				identity.Role = provisionRole
+			} else {
+				identity.Role = user.Role
+			}
+			ctx = auth.ContextWithIdentity(ctx, identity)
+		} else if identity.ExternalID != "" {
+			// Dev mode: resolve existing user if present.
 			q := dbtenant.New(conn)
 			user, err := q.GetUserByExternalID(ctx, identity.ExternalID)
 			if err == nil {
@@ -89,4 +142,44 @@ func (m *ResolveMiddleware) Resolve(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+// oidcSection is used to extract the OIDC config from tenant config JSONB.
+type oidcSection struct {
+	AllowedGroups []string `json:"allowed_groups"`
+	AdminGroups   []string `json:"admin_groups"`
+	EditorGroups  []string `json:"editor_groups"`
+	Enabled       bool     `json:"enabled"`
+}
+
+// loadOIDCGroupConfig extracts the group mapping config from a tenant's config JSONB.
+// Returns nil if OIDC is not configured or has no group settings.
+func loadOIDCGroupConfig(configJSON json.RawMessage) *auth.OIDCGroupConfig {
+	var full map[string]json.RawMessage
+	if len(configJSON) == 0 {
+		return nil
+	}
+	if err := json.Unmarshal(configJSON, &full); err != nil {
+		return nil
+	}
+	raw, ok := full["oidc"]
+	if !ok {
+		return nil
+	}
+	var section oidcSection
+	if err := json.Unmarshal(raw, &section); err != nil {
+		return nil
+	}
+	if !section.Enabled {
+		return nil
+	}
+	// Only return config if at least one group field is set.
+	if len(section.AdminGroups) == 0 && len(section.EditorGroups) == 0 && len(section.AllowedGroups) == 0 {
+		return nil
+	}
+	return &auth.OIDCGroupConfig{
+		AllowedGroups: section.AllowedGroups,
+		AdminGroups:   section.AdminGroups,
+		EditorGroups:  section.EditorGroups,
+	}
 }

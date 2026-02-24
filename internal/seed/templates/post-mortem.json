@@ -1,0 +1,30 @@
+{
+  "name": "Post-Mortem",
+  "description": "Standard 5-section post-mortem with timeline, root cause, impact, action items, and lessons learned",
+  "doc_type": "post-mortem",
+  "icon": "flame",
+  "sort_order": 0,
+  "content": {
+    "type": "doc",
+    "content": [
+      { "type": "heading", "attrs": {"level": 1}, "content": [{"type": "text", "text": "Post-Mortem: {{incident_title}}"}] },
+      { "type": "paragraph", "content": [{"type": "text", "marks": [{"type": "bold"}], "text": "Date: "}, {"type": "text", "text": "{{date}}"}] },
+      { "type": "paragraph", "content": [{"type": "text", "marks": [{"type": "bold"}], "text": "Severity: "}, {"type": "text", "text": "{{severity}}"}] },
+      { "type": "paragraph", "content": [{"type": "text", "marks": [{"type": "bold"}], "text": "Resolved by: "}, {"type": "text", "text": "{{resolved_by}}"}] },
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Summary"}] },
+      { "type": "paragraph", "content": [{"type": "text", "text": "Brief description of the incident and its resolution."}] },
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Timeline"}] },
+      { "type": "paragraph", "content": [{"type": "text", "text": "Add key events from the incident timeline here."}] },
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Root Cause"}] },
+      { "type": "paragraph", "content": [{"type": "text", "text": "Describe the root cause of the incident."}] },
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Impact"}] },
+      { "type": "paragraph", "content": [{"type": "text", "text": "Describe the business and user impact."}] },
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Action Items"}] },
+      { "type": "taskList", "content": [
+        { "type": "taskItem", "attrs": {"checked": false}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Add follow-up actions here"}]}] }
+      ]},
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Lessons Learned"}] },
+      { "type": "paragraph", "content": [{"type": "text", "text": "What did we learn? What do we do differently next time?"}] }
+    ]
+  }
+}

@@ -20,6 +20,7 @@
 - [x] Tenant provisioning: create schema + run migrations
 - [x] `search_path` middleware: resolve tenant → set schema
 - [x] Image storage migration (see `docs/09-image-storage.md`): `document_images` table + `storage_objects` table
+- [x] Trigram search migration (`migrations/tenant/000010_add_trigram_search`)
 
 ### 1.3 Authentication & RBAC
 - [x] OIDC middleware: validate JWT, extract claims
@@ -273,6 +274,133 @@ See `docs/09-image-storage.md` for the full spec.
 - [x] Unit tests for live context cache key functions
 - [x] `make test` passes (8 packages, 0 failures)
 - [x] `make lint` passes (0 issues)
+
+---
+
+## Phase 9: Image Storage (docs/09-image-storage.md)
+
+- [x] Add image storage migrations (`document_images`, `storage_objects`)
+- [x] Implement storage backend interface (`pkg/storage/storage.go`)
+- [x] Implement local filesystem backend (dev) — `pkg/storage/local.go`
+- [x] Implement S3-compatible backend (production) — `pkg/storage/s3.go`
+- [x] `POST /api/v1/images` — upload image, return URL
+- [x] `GET /api/v1/images/:id` — serve image (local) or redirect (S3)
+- [x] `DELETE /api/v1/images/:id` — delete image
+- [x] Wire Tiptap `Image` extension to upload endpoint in the frontend
+- [x] Orphan cleanup: background job removes unreferenced images
+
+---
+
+## Phase 10: Diagrams (docs/10-diagrams.md)
+
+- [x] `DiagramBlock` custom Tiptap extension (`web/src/components/editor/extensions/DiagramBlock.ts`)
+- [x] `DiagramBlockView` React node view with inline draw.io editor (`DiagramBlockView.tsx`)
+- [x] `DiagramModal` full-screen editor modal (`DiagramModal.tsx`)
+- [x] Slash command entry: `/diagram` inserts a diagram block
+- [x] Diagrams stored as SVG/XML within Tiptap JSON (no separate storage)
+
+---
+
+## Phase 11: OIDC Admin (docs/11-oidc-admin.md)
+
+- [x] `GET /api/v1/admin/oidc` — get OIDC configuration
+- [x] `PUT /api/v1/admin/oidc` — save OIDC settings (issuer, client ID, client secret, redirect URI)
+- [x] `POST /api/v1/admin/oidc/test` — test OIDC connectivity
+- [x] Admin UI: OIDC configuration form in admin page (`internal/admin/oidc.go`)
+- [x] Unit tests for OIDC config handlers (`internal/admin/oidc_test.go`)
+
+---
+
+## Phase 12: Login & Profile (docs/12-login-and-profile.md)
+
+### 12.1 Authentication
+- [x] Local admin table and migrations (`migrations/global/000003_create_local_admins`)
+- [x] `POST /auth/local` — local admin login with session cookie
+- [x] `POST /auth/logout` — destroy session
+- [x] `POST /auth/change-password` — forced password change on first login
+- [x] JWT session management (`internal/session/`)
+- [x] Auth handler package (`internal/authhandler/`)
+- [x] Rate limiting on local login (429 with `retry_after`)
+- [x] Auth middleware updated to support session cookies (`internal/auth/auth.go`)
+- [x] Unit tests for auth middleware (`internal/auth/auth_test.go`)
+
+### 12.2 User Profile
+- [x] `GET /api/v1/profile` — current user profile
+- [x] `PUT /api/v1/profile` — update display name, job title, avatar URL
+- [x] User profile fields migration (`migrations/tenant/000011_add_user_profile_fields`)
+- [x] Profile page (`web/src/routes/profile.tsx`)
+- [x] `UserAvatar` component (`web/src/components/UserAvatar.tsx`)
+
+### 12.3 Personal API Tokens
+- [x] `GET /api/v1/profile/tokens` — list user's personal tokens
+- [x] `POST /api/v1/profile/tokens` — create personal token
+- [x] `DELETE /api/v1/profile/tokens/:id` — revoke token
+- [x] Personal tokens page (`web/src/routes/profile.tokens.tsx`)
+
+### 12.4 Frontend
+- [x] Login page (`web/src/routes/login.tsx`) — OIDC button + local admin form
+- [x] OIDC callback page (`web/src/routes/callback.tsx`)
+- [x] Change password page (`web/src/routes/change-password.tsx`)
+- [x] Auth provider with OIDC + session support (`web/src/auth/`)
+- [x] User menu in sidebar with profile, tokens, admin, sign out links
+
+---
+
+## Phase 13: Export (docs/13-export.md)
+
+- [ ] `GET /api/v1/documents/:id/export?format=markdown` — export as Markdown
+- [ ] `GET /api/v1/documents/:id/export?format=html` — export as HTML
+- [ ] `GET /api/v1/documents/:id/export?format=pdf` — export as PDF
+- [ ] Tiptap JSON → Markdown converter
+- [ ] Tiptap JSON → HTML converter (reuse integration renderer)
+- [ ] PDF generation (HTML → PDF via headless browser or wkhtmltopdf)
+- [ ] Frontend: export button in document header `⋯` menu
+
+---
+
+## Phase 14: Comments & Notifications (docs/14-comments.md)
+
+### 14.1 Backend
+- [x] Comments migration (`migrations/tenant/000013_create_comments`)
+- [x] Notifications migration (`migrations/tenant/000014_create_notifications`)
+- [x] sqlc queries: comments (`internal/db/tenant/query/comments.sql`)
+- [x] sqlc queries: notifications (`internal/db/tenant/query/notifications.sql`)
+- [x] sqlc query: `GetUsersByEmails` added to users.sql for @mention resolution
+- [x] `pkg/comment/` — renderer, service, store, handler, types, tests
+  - [x] Markdown-lite renderer (bold, italic, code, @mentions, URLs)
+  - [x] Two-level threading (top-level + replies, no infinite nesting)
+  - [x] 15-minute edit window (admin bypasses)
+  - [x] Soft-delete (body replaced with `[deleted]`)
+  - [x] Resolve/unresolve top-level comments
+  - [x] @mention extraction → notification creation
+- [x] `pkg/notification/` — service, store, handler, types, tests
+  - [x] Unread count endpoint
+  - [x] List with actor info
+  - [x] Mark read (individual + all)
+- [x] Wired in `internal/app/app.go`
+
+### 14.2 Frontend
+- [x] `CommentPanel` component — right panel with threaded comments
+- [x] `NotificationBell` component — bell icon with unread count badge, 60s polling
+- [x] Comment types added to `web/src/api/client.ts`
+- [x] Document page updated with comment toggle button + panel
+- [x] Sidebar updated with notification bell
+
+---
+
+## Phase 15: Templates (docs/15-templates.md)
+
+- [x] Templates migration (`migrations/tenant/000012_create_templates`)
+- [x] sqlc queries: templates (`internal/db/tenant/query/templates.sql`)
+- [x] `pkg/template/` — service, store, handler, types
+- [x] System templates seeded (`internal/seed/templates/`)
+- [x] `GET /api/v1/templates` — list templates
+- [x] `POST /api/v1/templates` — create user template
+- [x] `PUT /api/v1/templates/:id` — update template
+- [x] `DELETE /api/v1/templates/:id` — delete template
+- [x] `POST /api/v1/documents/:id/save-as-template` — save document as template
+- [x] Templates page (`web/src/routes/templates.tsx`)
+- [x] Create document dialog: template picker
 
 ---
 

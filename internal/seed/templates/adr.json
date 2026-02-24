@@ -1,0 +1,27 @@
+{
+  "name": "Architecture Decision Record",
+  "description": "ADR with context, decision, and consequences (Nygard format)",
+  "doc_type": "adr",
+  "icon": "landmark",
+  "sort_order": 3,
+  "content": {
+    "type": "doc",
+    "content": [
+      { "type": "heading", "attrs": {"level": 1}, "content": [{"type": "text", "text": "ADR: {{decision_title}}"}] },
+      { "type": "paragraph", "content": [{"type": "text", "marks": [{"type": "bold"}], "text": "Status: "}, {"type": "text", "text": "{{status}}"}] },
+      { "type": "paragraph", "content": [{"type": "text", "marks": [{"type": "bold"}], "text": "Date: "}, {"type": "text", "text": "{{date}}"}] },
+      { "type": "paragraph", "content": [{"type": "text", "marks": [{"type": "bold"}], "text": "Deciders: "}, {"type": "text", "text": "{{deciders}}"}] },
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Context"}] },
+      { "type": "paragraph", "content": [{"type": "text", "text": "Describe the issue motivating this decision, including any context, forces at play, and the trade-offs involved."}] },
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Decision"}] },
+      { "type": "paragraph", "content": [{"type": "text", "text": "State the decision that was made. Use active voice: \"We will...\""}] },
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Alternatives Considered"}] },
+      { "type": "bulletList", "content": [
+        { "type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "marks": [{"type": "bold"}], "text": "Option A:"}, {"type": "text", "text": " Description and trade-offs"}]}] },
+        { "type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "marks": [{"type": "bold"}], "text": "Option B:"}, {"type": "text", "text": " Description and trade-offs"}]}] }
+      ]},
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Consequences"}] },
+      { "type": "paragraph", "content": [{"type": "text", "text": "Describe the resulting context after applying the decision. Include both positive and negative consequences."}] }
+    ]
+  }
+}

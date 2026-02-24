@@ -26,6 +26,19 @@ func (s *Service) Create(ctx context.Context, store *Store, req CreateRequest, u
 		return Response{}, fmt.Errorf("slug is required")
 	}
 
+	// If a template_id is provided, pre-fill content and doc_type from the template.
+	if req.TemplateID != nil {
+		tmpl, err := store.Queries().GetTemplateByID(ctx, *req.TemplateID)
+		if err == nil {
+			if len(req.Content) == 0 {
+				req.Content = tmpl.Content
+			}
+			if req.DocType == "" {
+				req.DocType = tmpl.DocType
+			}
+		}
+	}
+
 	contentText := ExtractText(req.Content)
 	wordCount := CountWords(contentText)
 

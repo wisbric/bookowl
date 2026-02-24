@@ -7,32 +7,43 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
 
+	"encoding/json"
+
 	"github.com/wisbric/bookowl/internal/admin"
 	"github.com/wisbric/bookowl/internal/auth"
+	"github.com/wisbric/bookowl/internal/authhandler"
 	"github.com/wisbric/bookowl/internal/config"
 	dbtenant "github.com/wisbric/bookowl/internal/db/tenant"
 	"github.com/wisbric/bookowl/internal/httpserver"
 	"github.com/wisbric/bookowl/internal/integration"
 	"github.com/wisbric/bookowl/internal/platform"
+	"github.com/wisbric/bookowl/internal/session"
 	"github.com/wisbric/bookowl/internal/version"
 	"github.com/wisbric/bookowl/pkg/collection"
+	"github.com/wisbric/bookowl/pkg/comment"
 	"github.com/wisbric/bookowl/pkg/document"
 	"github.com/wisbric/bookowl/pkg/image"
 	"github.com/wisbric/bookowl/pkg/livecontext"
+	"github.com/wisbric/bookowl/pkg/notification"
 	"github.com/wisbric/bookowl/pkg/space"
 	"github.com/wisbric/bookowl/pkg/storage"
+	"github.com/wisbric/bookowl/pkg/template"
 	"github.com/wisbric/bookowl/pkg/tenant"
+	"github.com/wisbric/bookowl/pkg/user"
 )
 
 type App struct {
-	cfg     config.Config
-	plat    *platform.Platform
-	router  *chi.Mux
-	backend storage.Backend
-	stopCh  chan struct{}
+	cfg          config.Config
+	plat         *platform.Platform
+	router       *chi.Mux
+	backend      storage.Backend
+	oidcVerifier *oidc.IDTokenVerifier
+	sess         *session.Manager
+	stopCh       chan struct{}
 }
 
 func New(ctx context.Context, cfg config.Config) (*App, error) {
@@ -47,11 +58,41 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		return nil, fmt.Errorf("initializing storage backend: %w", err)
 	}
 
+	var oidcVerifier *oidc.IDTokenVerifier
+	if cfg.OIDCIssuer != "" {
+		provider, err := oidc.NewProvider(ctx, cfg.OIDCIssuer)
+		if err != nil {
+			plat.Close()
+			return nil, fmt.Errorf("initializing OIDC provider: %w", err)
+		}
+		oidcVerifier = provider.Verifier(&oidc.Config{
+			ClientID: cfg.OIDCClientID,
+		})
+		slog.Info("OIDC authentication enabled", "issuer", cfg.OIDCIssuer, "client_id", cfg.OIDCClientID)
+	} else {
+		slog.Info("OIDC authentication disabled (no BOOKOWL_OIDC_ISSUER set)")
+	}
+
+	// Session manager for local admin and OIDC sessions.
+	var sess *session.Manager
+	if cfg.SecretKey != "" {
+		sessionTTL, err := time.ParseDuration(cfg.SessionTTL)
+		if err != nil {
+			sessionTTL = 12 * time.Hour
+		}
+		sess = session.NewManager(cfg.SecretKey, sessionTTL)
+		slog.Info("session management enabled", "ttl", sessionTTL)
+	} else {
+		slog.Info("session management disabled (no BOOKOWL_SECRET_KEY set)")
+	}
+
 	app := &App{
-		cfg:     cfg,
-		plat:    plat,
-		backend: backend,
-		stopCh:  make(chan struct{}),
+		cfg:          cfg,
+		plat:         plat,
+		backend:      backend,
+		oidcVerifier: oidcVerifier,
+		sess:         sess,
+		stopCh:       make(chan struct{}),
 	}
 	app.setupRouter()
 	return app, nil
@@ -95,8 +136,24 @@ func (a *App) setupRouter() {
 		httpserver.Respond(w, http.StatusOK, map[string]string{"status": "ready"})
 	})
 
+	// Auth config endpoint (no auth required — frontend uses this to decide OIDC vs dev mode).
+	r.Get("/api/v1/auth/config", func(w http.ResponseWriter, r *http.Request) {
+		resp := map[string]any{
+			"oidc_enabled": a.cfg.OIDCIssuer != "",
+		}
+		if a.cfg.OIDCIssuer != "" {
+			resp["oidc_authority"] = a.cfg.OIDCIssuer
+			resp["oidc_client_id"] = a.cfg.OIDCClientID
+		}
+		httpserver.Respond(w, http.StatusOK, resp)
+	})
+
+	// Auth handler (public, no auth required).
+	authH := authhandler.NewHandler(a.plat.DB, a.sess, a.plat.Redis)
+	r.Mount("/auth", authH.Routes())
+
 	// Auth + tenant middleware.
-	authMW := auth.NewMiddleware(a.plat.DB, a.cfg.DevMode)
+	authMW := auth.NewMiddleware(a.plat.DB, a.cfg.DevMode, a.oidcVerifier, a.sess)
 	tenantMW := tenant.NewResolveMiddleware(a.plat.DB, a.plat.DB)
 
 	// Domain services.
@@ -110,6 +167,16 @@ func (a *App) setupRouter() {
 	documentHandler := document.NewHandler(documentSvc)
 	searchHandler := document.NewSearchHandler(documentSvc)
 
+	// Template handler.
+	templateSvc := template.NewService()
+	templateHandler := template.NewHandler(templateSvc)
+
+	// Comment + notification handlers.
+	commentSvc := comment.NewService()
+	commentHandler := comment.NewHandler(commentSvc)
+	notificationSvc := notification.NewService()
+	notificationHandler := notification.NewHandler(notificationSvc)
+
 	// Integration handler (NightOwl → BookOwl).
 	integrationHandler := integration.NewHandler(documentSvc)
 
@@ -121,8 +188,11 @@ func (a *App) setupRouter() {
 	// Image handler.
 	imageHandler := image.NewHandler(a.backend)
 
+	// Profile handler.
+	profileHandler := user.NewProfileHandler(a.plat.DB)
+
 	// Admin handler.
-	adminHandler := admin.NewHandler(a.plat.DB, liveContextClient)
+	adminHandler := admin.NewHandler(a.plat.DB, liveContextClient, a.cfg.SecretKey, a.plat.Redis)
 
 	// API v1 routes (require auth + tenant).
 	r.Route("/api/v1", func(r chi.Router) {
@@ -140,11 +210,69 @@ func (a *App) setupRouter() {
 			})
 		})
 
+		// Health check (DB, Redis, NightOwl).
+		r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+			checks := map[string]string{}
+
+			if err := a.plat.DB.Ping(r.Context()); err != nil {
+				checks["database"] = "unhealthy"
+			} else {
+				checks["database"] = "healthy"
+			}
+
+			if err := a.plat.Redis.Ping(r.Context()).Err(); err != nil {
+				checks["redis"] = "unhealthy"
+			} else {
+				checks["redis"] = "healthy"
+			}
+
+			t, ok := tenant.FromContext(r.Context())
+			if ok {
+				var cfg livecontext.TenantNightOwlConfig
+				if len(t.Config) > 0 {
+					_ = json.Unmarshal(t.Config, &cfg)
+				}
+				if cfg.APIURL != "" && cfg.APIKey != "" {
+					_, err := liveContextClient.GetActiveAlerts(r.Context(), cfg, "critical", 1)
+					if err != nil {
+						checks["nightowl"] = "unhealthy"
+					} else {
+						checks["nightowl"] = "healthy"
+					}
+				} else {
+					checks["nightowl"] = "not configured"
+				}
+			} else {
+				checks["nightowl"] = "unknown"
+			}
+
+			status := "ok"
+			for _, v := range checks {
+				if v == "unhealthy" {
+					status = "degraded"
+					break
+				}
+			}
+
+			httpserver.Respond(w, http.StatusOK, map[string]any{
+				"status": status,
+				"checks": checks,
+			})
+		})
+
 		// Spaces (with nested collections).
 		r.Mount("/spaces", spaceHandler.Routes(collectionHandler.Routes()))
 
-		// Documents.
-		r.Mount("/documents", documentHandler.Routes())
+		// Documents (includes save-as-template and comment sub-routes).
+		r.Mount("/documents", documentHandler.Routes(
+			func(r chi.Router) {
+				r.Post("/save-as-template", templateHandler.SaveAsTemplate)
+			},
+			commentHandler.CommentRoutes(),
+		))
+
+		// Templates.
+		r.Mount("/templates", templateHandler.Routes())
 
 		// Search.
 		r.Get("/search", searchHandler.Search)
@@ -157,6 +285,12 @@ func (a *App) setupRouter() {
 
 		// Images.
 		r.Mount("/images", imageHandler.Routes())
+
+		// Profile.
+		r.Mount("/profile", profileHandler.Routes())
+
+		// Notifications.
+		r.Mount("/notifications", notificationHandler.Routes())
 
 		// Admin.
 		r.Mount("/admin", adminHandler.Routes())

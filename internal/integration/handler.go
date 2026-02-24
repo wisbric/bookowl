@@ -247,8 +247,8 @@ func (h *Handler) CreatePostMortem(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Build document content from template.
-	content := buildPostMortemContent(req.Incident)
+	// Try to use the system post-mortem template from the DB; fall back to hardcoded.
+	content := buildPostMortemFromDB(ctx, q, req.Incident)
 	contentText := document.ExtractText(content)
 	wordCount := document.CountWords(contentText)
 	docSlug := slugify(req.Title)

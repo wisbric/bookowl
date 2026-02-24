@@ -2,6 +2,7 @@ package seed
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -15,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/wisbric/bookowl/internal/authhandler"
 	"github.com/wisbric/bookowl/internal/config"
 	"github.com/wisbric/bookowl/internal/db"
 	dbglobal "github.com/wisbric/bookowl/internal/db/global"
@@ -35,6 +37,10 @@ func Run(ctx context.Context, cfg config.Config) error {
 	}
 	defer pool.Close()
 
+	if err := ensureGlobalSchema(ctx, pool); err != nil {
+		return fmt.Errorf("ensuring global schema: %w", err)
+	}
+
 	tenantID, err := ensureTenant(ctx, pool)
 	if err != nil {
 		return fmt.Errorf("ensuring tenant: %w", err)
@@ -42,6 +48,10 @@ func Run(ctx context.Context, cfg config.Config) error {
 
 	if err := ensureDevAPIKey(ctx, pool, tenantID); err != nil {
 		return fmt.Errorf("ensuring dev API key: %w", err)
+	}
+
+	if err := ensureLocalAdmin(ctx, pool, cfg); err != nil {
+		return fmt.Errorf("ensuring local admin: %w", err)
 	}
 
 	if err := ensureTenantSchema(ctx, pool); err != nil {
@@ -63,6 +73,10 @@ func Run(ctx context.Context, cfg config.Config) error {
 	users, err := ensureUsers(ctx, q)
 	if err != nil {
 		return fmt.Errorf("ensuring users: %w", err)
+	}
+
+	if err := ensureSystemTemplates(ctx, q); err != nil {
+		return fmt.Errorf("ensuring system templates: %w", err)
 	}
 
 	slog.Info("seed complete", "tenant", tenantSlug, "users", len(users))
@@ -122,6 +136,87 @@ func ensureDevAPIKey(ctx context.Context, pool *pgxpool.Pool, tenantID [16]byte)
 	}
 
 	slog.Info("created dev API key")
+	return nil
+}
+
+func ensureGlobalSchema(ctx context.Context, pool *pgxpool.Pool) error {
+	migrationsDir := "migrations/global"
+	entries, err := os.ReadDir(migrationsDir)
+	if err != nil {
+		return fmt.Errorf("reading global migrations dir: %w", err)
+	}
+
+	var upFiles []string
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".up.sql") {
+			upFiles = append(upFiles, e.Name())
+		}
+	}
+	sort.Strings(upFiles)
+
+	for _, f := range upFiles {
+		sql, err := os.ReadFile(filepath.Join(migrationsDir, f))
+		if err != nil {
+			return fmt.Errorf("reading migration %s: %w", f, err)
+		}
+		if _, err := pool.Exec(ctx, string(sql)); err != nil {
+			if !strings.Contains(err.Error(), "already exists") {
+				return fmt.Errorf("running migration %s: %w", f, err)
+			}
+		}
+		slog.Debug("applied global migration", "file", f)
+	}
+	return nil
+}
+
+func ensureLocalAdmin(ctx context.Context, pool *pgxpool.Pool, cfg config.Config) error {
+	gq := dbglobal.New(pool)
+
+	// Check if local admin already exists.
+	_, err := gq.GetLocalAdminByTenant(ctx, tenantSlug)
+	if err == nil {
+		slog.Info("local admin already exists", "tenant", tenantSlug)
+		return nil
+	}
+
+	// Determine password.
+	password := cfg.AdminPassword
+	generated := false
+	if password == "" {
+		if cfg.DevMode || cfg.Mode == "seed-demo" {
+			password = "bookowl-admin"
+		} else {
+			b := make([]byte, 12)
+			if _, err := rand.Read(b); err != nil {
+				return fmt.Errorf("generating random password: %w", err)
+			}
+			password = hex.EncodeToString(b)[:16]
+			generated = true
+		}
+	}
+
+	hash, err := authhandler.HashPassword(password)
+	if err != nil {
+		return fmt.Errorf("hashing admin password: %w", err)
+	}
+
+	_, err = gq.CreateLocalAdmin(ctx, dbglobal.CreateLocalAdminParams{
+		TenantSlug:   tenantSlug,
+		Username:     "admin",
+		PasswordHash: hash,
+		MustChange:   true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating local admin: %w", err)
+	}
+
+	fmt.Println("✓ Local admin created")
+	fmt.Println("  Username: admin")
+	fmt.Printf("  Password: %s\n", password)
+	if generated {
+		fmt.Println("  ⚠ Save this password — it will not be shown again")
+	}
+
 	return nil
 }
 
@@ -211,6 +306,67 @@ func ensureUsers(ctx context.Context, q *dbtenant.Queries) ([]seedUser, error) {
 	}
 
 	return users, nil
+}
+
+func ensureSystemTemplates(ctx context.Context, q *dbtenant.Queries) error {
+	templatesDir := "internal/seed/templates"
+	entries, err := os.ReadDir(templatesDir)
+	if err != nil {
+		return fmt.Errorf("reading templates dir: %w", err)
+	}
+
+	type templateDef struct {
+		Name        string          `json:"name"`
+		Description string          `json:"description"`
+		DocType     string          `json:"doc_type"`
+		Icon        string          `json:"icon"`
+		SortOrder   int32           `json:"sort_order"`
+		Content     json.RawMessage `json:"content"`
+	}
+
+	var seeded int
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+
+		data, err := os.ReadFile(filepath.Join(templatesDir, e.Name()))
+		if err != nil {
+			return fmt.Errorf("reading template %s: %w", e.Name(), err)
+		}
+
+		var def templateDef
+		if err := json.Unmarshal(data, &def); err != nil {
+			return fmt.Errorf("parsing template %s: %w", e.Name(), err)
+		}
+
+		// Check if this system template already exists by name.
+		_, err = q.GetSystemTemplateByName(ctx, def.Name)
+		if err == nil {
+			slog.Debug("system template already exists", "name", def.Name)
+			continue
+		}
+
+		_, err = q.CreateTemplate(ctx, dbtenant.CreateTemplateParams{
+			Name:        def.Name,
+			Description: db.ValidText(def.Description),
+			DocType:     def.DocType,
+			Content:     def.Content,
+			Icon:        db.NullText(&def.Icon),
+			IsSystem:    true,
+			IsGlobal:    true,
+			SortOrder:   def.SortOrder,
+		})
+		if err != nil {
+			return fmt.Errorf("creating system template %q: %w", def.Name, err)
+		}
+		seeded++
+	}
+
+	if seeded > 0 {
+		slog.Info("seeded system templates", "count", seeded)
+	}
+	return nil
 }
 
 func seedDemo(ctx context.Context, q *dbtenant.Queries, users []seedUser) error {

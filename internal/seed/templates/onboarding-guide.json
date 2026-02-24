@@ -1,0 +1,39 @@
+{
+  "name": "Onboarding Guide",
+  "description": "New team member onboarding with checklist, key resources, and setup instructions",
+  "doc_type": "document",
+  "icon": "user-plus",
+  "sort_order": 5,
+  "content": {
+    "type": "doc",
+    "content": [
+      { "type": "heading", "attrs": {"level": 1}, "content": [{"type": "text", "text": "Onboarding: {{team_name}}"}] },
+      { "type": "paragraph", "content": [{"type": "text", "text": "Welcome to the team! This guide will help you get up and running."}] },
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Day 1: Access & Setup"}] },
+      { "type": "taskList", "content": [
+        { "type": "taskItem", "attrs": {"checked": false}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Get access to email, Slack, and calendar"}]}] },
+        { "type": "taskItem", "attrs": {"checked": false}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Set up development environment"}]}] },
+        { "type": "taskItem", "attrs": {"checked": false}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Clone repositories and verify build"}]}] },
+        { "type": "taskItem", "attrs": {"checked": false}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Request access to monitoring tools"}]}] }
+      ]},
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Week 1: Getting Oriented"}] },
+      { "type": "taskList", "content": [
+        { "type": "taskItem", "attrs": {"checked": false}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Read architecture overview documentation"}]}] },
+        { "type": "taskItem", "attrs": {"checked": false}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Meet with team members (1:1s)"}]}] },
+        { "type": "taskItem", "attrs": {"checked": false}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Shadow on-call rotation"}]}] },
+        { "type": "taskItem", "attrs": {"checked": false}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Complete first starter task"}]}] }
+      ]},
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Key Resources"}] },
+      { "type": "bulletList", "content": [
+        { "type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Architecture docs: (link)"}]}] },
+        { "type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Runbooks: (link)"}]}] },
+        { "type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "On-call handbook: (link)"}]}] }
+      ]},
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Contacts"}] },
+      { "type": "bulletList", "content": [
+        { "type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "marks": [{"type": "bold"}], "text": "Manager:"}, {"type": "text", "text": " {{manager_name}}"}]}] },
+        { "type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "marks": [{"type": "bold"}], "text": "Buddy:"}, {"type": "text", "text": " {{buddy_name}}"}]}] }
+      ]}
+    ]
+  }
+}

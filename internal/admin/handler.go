@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/wisbric/bookowl/internal/auth"
 	dbglobal "github.com/wisbric/bookowl/internal/db/global"
@@ -16,14 +17,18 @@ import (
 
 // Handler serves /api/v1/admin/ endpoints for tenant configuration.
 type Handler struct {
-	globalQ *dbglobal.Queries
-	client  *livecontext.Client
+	globalQ   *dbglobal.Queries
+	client    *livecontext.Client
+	secretKey string        // hex-encoded 32-byte key for AES-256-GCM encryption
+	redis     *redis.Client // for cache invalidation
 }
 
-func NewHandler(globalDB dbglobal.DBTX, client *livecontext.Client) *Handler {
+func NewHandler(globalDB dbglobal.DBTX, client *livecontext.Client, secretKey string, rdb *redis.Client) *Handler {
 	return &Handler{
-		globalQ: dbglobal.New(globalDB),
-		client:  client,
+		globalQ:   dbglobal.New(globalDB),
+		client:    client,
+		secretKey: secretKey,
+		redis:     rdb,
 	}
 }
 
@@ -33,6 +38,11 @@ func (h *Handler) Routes() chi.Router {
 	r.Get("/config", h.GetConfig)
 	r.Put("/config", h.UpdateConfig)
 	r.Post("/config/test-nightowl", h.TestNightOwl)
+
+	// OIDC config endpoints.
+	r.Get("/config/oidc", h.GetOIDCConfig)
+	r.Put("/config/oidc", h.UpdateOIDCConfig)
+	r.Post("/config/oidc/test", h.TestOIDCConfig)
 	return r
 }
 

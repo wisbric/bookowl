@@ -19,7 +19,7 @@ func NewHandler(svc *Service) *Handler {
 	return &Handler{svc: svc}
 }
 
-func (h *Handler) Routes() chi.Router {
+func (h *Handler) Routes(extraDocRoutes ...func(chi.Router)) chi.Router {
 	r := chi.NewRouter()
 	r.Post("/", h.Create)
 	r.Get("/", h.List)
@@ -30,6 +30,9 @@ func (h *Handler) Routes() chi.Router {
 		r.Get("/history", h.ListVersions)
 		r.Get("/history/{versionId}", h.GetVersion)
 		r.Post("/restore/{versionId}", h.Restore)
+		for _, fn := range extraDocRoutes {
+			fn(r)
+		}
 	})
 	return r
 }

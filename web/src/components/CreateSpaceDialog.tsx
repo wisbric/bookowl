@@ -1,30 +1,59 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 import { api } from '@/api/client'
 import type { Space } from '@/api/client'
 
+const SPACE_ICONS = [
+  '📁', '📂', '📚', '📖', '📝', '📋', '🔖', '🗂️', '📌', '💡',
+  '🔧', '🛠️', '⚙️', '🚀', '🎯', '🔒', '🌐', '📊', '📈', '🧪',
+  '🐛', '🔥', '⚡', '🏗️', '📦', '🎨', '💻', '🤖', '🦉', '🌙',
+]
+
 interface CreateSpaceDialogProps {
   open: boolean
   onClose: () => void
+  space?: Space
 }
 
-export function CreateSpaceDialog({ open, onClose }: CreateSpaceDialogProps) {
+export function CreateSpaceDialog({ open, onClose, space }: CreateSpaceDialogProps) {
   const queryClient = useQueryClient()
+  const isEdit = !!space
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [icon, setIcon] = useState('')
 
-  const createMutation = useMutation({
-    mutationFn: () =>
-      api.post<Space>('/spaces', {
+  useEffect(() => {
+    if (open && space) {
+      setName(space.name)
+      setDescription(space.description ?? '')
+      setIcon(space.icon ?? '')
+    } else if (open && !space) {
+      setName('')
+      setDescription('')
+      setIcon('')
+    }
+  }, [open, space])
+
+  const mutation = useMutation({
+    mutationFn: () => {
+      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+      const body = {
         name,
-        slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+        slug,
         description: description || undefined,
         icon: icon || undefined,
-      }),
+      }
+      if (isEdit) {
+        return api.put<Space>(`/spaces/${space.id}`, body)
+      }
+      return api.post<Space>('/spaces', body)
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['spaces'] })
+      if (isEdit) {
+        queryClient.invalidateQueries({ queryKey: ['space', space.id] })
+      }
       setName('')
       setDescription('')
       setIcon('')
@@ -39,7 +68,7 @@ export function CreateSpaceDialog({ open, onClose }: CreateSpaceDialogProps) {
       <div className="fixed inset-0 bg-black/60" onClick={onClose} />
       <div className="relative w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-2xl">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Create Space</h2>
+          <h2 className="text-lg font-semibold">{isEdit ? 'Edit Space' : 'Create Space'}</h2>
           <button
             onClick={onClose}
             className="rounded p-1 text-muted-foreground hover:text-foreground"
@@ -51,7 +80,7 @@ export function CreateSpaceDialog({ open, onClose }: CreateSpaceDialogProps) {
         <form
           onSubmit={(e) => {
             e.preventDefault()
-            if (name.trim()) createMutation.mutate()
+            if (name.trim()) mutation.mutate()
           }}
           className="space-y-4"
         >
@@ -79,14 +108,25 @@ export function CreateSpaceDialog({ open, onClose }: CreateSpaceDialogProps) {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Icon</label>
-            <input
-              type="text"
-              value={icon}
-              onChange={(e) => setIcon(e.target.value)}
-              placeholder="e.g. 📚"
-              className="w-20 rounded-md border border-border bg-background px-3 py-2 text-center text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-            />
+            <label className="mb-1 block text-sm font-medium">
+              Icon {icon && <span className="ml-1 text-muted-foreground">— {icon}</span>}
+            </label>
+            <div className="grid grid-cols-10 gap-1">
+              {SPACE_ICONS.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={() => setIcon(icon === emoji ? '' : emoji)}
+                  className={`flex h-8 w-8 items-center justify-center rounded-md text-base transition-colors ${
+                    icon === emoji
+                      ? 'bg-accent/20 ring-2 ring-accent'
+                      : 'hover:bg-muted'
+                  }`}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
@@ -99,16 +139,16 @@ export function CreateSpaceDialog({ open, onClose }: CreateSpaceDialogProps) {
             </button>
             <button
               type="submit"
-              disabled={!name.trim() || createMutation.isPending}
+              disabled={!name.trim() || mutation.isPending}
               className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent/90 disabled:opacity-50"
             >
-              {createMutation.isPending ? 'Creating...' : 'Create'}
+              {mutation.isPending ? (isEdit ? 'Saving...' : 'Creating...') : (isEdit ? 'Save' : 'Create')}
             </button>
           </div>
 
-          {createMutation.isError && (
+          {mutation.isError && (
             <p className="text-sm text-destructive">
-              Failed to create space. Please try again.
+              Failed to {isEdit ? 'update' : 'create'} space. Please try again.
             </p>
           )}
         </form>

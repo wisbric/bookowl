@@ -39,6 +39,22 @@ type Collection struct {
 	UpdatedAt time.Time   `json:"updated_at"`
 }
 
+type Comment struct {
+	ID           uuid.UUID          `json:"id"`
+	DocumentID   uuid.UUID          `json:"document_id"`
+	ParentID     pgtype.UUID        `json:"parent_id"`
+	AuthorID     uuid.UUID          `json:"author_id"`
+	Body         string             `json:"body"`
+	BodyRendered string             `json:"body_rendered"`
+	IsResolved   bool               `json:"is_resolved"`
+	ResolvedBy   pgtype.UUID        `json:"resolved_by"`
+	ResolvedAt   pgtype.Timestamptz `json:"resolved_at"`
+	IsDeleted    bool               `json:"is_deleted"`
+	EditedAt     pgtype.Timestamptz `json:"edited_at"`
+	CreatedAt    time.Time          `json:"created_at"`
+	UpdatedAt    time.Time          `json:"updated_at"`
+}
+
 type Document struct {
 	ID                 uuid.UUID       `json:"id"`
 	SpaceID            uuid.UUID       `json:"space_id"`
@@ -84,6 +100,17 @@ type DocumentVersion struct {
 	CreatedAt     time.Time       `json:"created_at"`
 }
 
+type Notification struct {
+	ID         uuid.UUID   `json:"id"`
+	UserID     uuid.UUID   `json:"user_id"`
+	Type       string      `json:"type"`
+	DocumentID pgtype.UUID `json:"document_id"`
+	CommentID  pgtype.UUID `json:"comment_id"`
+	ActorID    pgtype.UUID `json:"actor_id"`
+	IsRead     bool        `json:"is_read"`
+	CreatedAt  time.Time   `json:"created_at"`
+}
+
 type Space struct {
 	ID          uuid.UUID   `json:"id"`
 	Name        string      `json:"name"`
@@ -115,13 +142,32 @@ type StorageObject struct {
 	CreatedAt   time.Time   `json:"created_at"`
 }
 
+type Template struct {
+	ID          uuid.UUID       `json:"id"`
+	Name        string          `json:"name"`
+	Description pgtype.Text     `json:"description"`
+	DocType     string          `json:"doc_type"`
+	Content     json.RawMessage `json:"content"`
+	Icon        pgtype.Text     `json:"icon"`
+	IsSystem    bool            `json:"is_system"`
+	IsGlobal    bool            `json:"is_global"`
+	SpaceID     pgtype.UUID     `json:"space_id"`
+	CreatedBy   pgtype.UUID     `json:"created_by"`
+	SortOrder   int32           `json:"sort_order"`
+	CreatedAt   time.Time       `json:"created_at"`
+	UpdatedAt   time.Time       `json:"updated_at"`
+}
+
 type User struct {
-	ID          uuid.UUID `json:"id"`
-	ExternalID  string    `json:"external_id"`
-	Email       string    `json:"email"`
-	DisplayName string    `json:"display_name"`
-	Role        string    `json:"role"`
-	IsActive    bool      `json:"is_active"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID              uuid.UUID   `json:"id"`
+	ExternalID      string      `json:"external_id"`
+	Email           string      `json:"email"`
+	DisplayName     string      `json:"display_name"`
+	Role            string      `json:"role"`
+	IsActive        bool        `json:"is_active"`
+	CreatedAt       time.Time   `json:"created_at"`
+	UpdatedAt       time.Time   `json:"updated_at"`
+	Timezone        string      `json:"timezone"`
+	AvatarStorageID pgtype.UUID `json:"avatar_storage_id"`
+	AuthMethod      string      `json:"auth_method"`
 }

@@ -1,10 +1,13 @@
 import { Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { Search, Plus, Settings, ExternalLink, Sun, Moon } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { Search, Plus, Settings, ExternalLink, Sun, Moon, LogOut, User, Key, LayoutTemplate } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
 import { api } from '@/api/client'
 import type { Space } from '@/api/client'
 import { CreateSpaceDialog } from '@/components/CreateSpaceDialog'
+import { UserAvatar } from '@/components/UserAvatar'
+import { NotificationBell } from '@/components/NotificationBell'
+import { useAuth } from '@/auth/auth-provider'
 
 interface SidebarProps {
   onOpenPalette: () => void
@@ -13,6 +16,9 @@ interface SidebarProps {
 export function Sidebar({ onOpenPalette }: SidebarProps) {
   const [darkMode, setDarkMode] = useState(true)
   const [showCreateSpace, setShowCreateSpace] = useState(false)
+  const [showUserMenu, setShowUserMenu] = useState(false)
+  const userMenuRef = useRef<HTMLDivElement>(null)
+  const { profile, logout } = useAuth()
 
   const { data: spaces } = useQuery({
     queryKey: ['spaces'],
@@ -24,16 +30,29 @@ export function Sidebar({ onOpenPalette }: SidebarProps) {
     document.documentElement.classList.toggle('light', !darkMode)
   }, [darkMode])
 
+  // Close user menu on outside click.
+  useEffect(() => {
+    if (!showUserMenu) return
+    const handler = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setShowUserMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showUserMenu])
+
   return (
     <>
       <aside className="flex w-80 shrink-0 flex-col border-r border-border bg-sidebar">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <Link to="/" className="flex items-center gap-2 font-semibold text-sidebar-foreground">
-            <span className="text-xl">🦉</span>
+            <img src="/owl.png" alt="BookOwl" className="h-8 brightness-0 dark:brightness-100" />
             <span>BookOwl</span>
           </Link>
           <div className="flex items-center gap-1">
+            <NotificationBell />
             <button
               onClick={() => setDarkMode(!darkMode)}
               className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
@@ -54,6 +73,17 @@ export function Sidebar({ onOpenPalette }: SidebarProps) {
             <span>Search docs...</span>
             <kbd className="ml-auto rounded bg-muted px-1.5 py-0.5 text-xs">⌘K</kbd>
           </button>
+        </div>
+
+        {/* Quick links */}
+        <div className="px-3 pb-2">
+          <Link
+            to="/templates"
+            className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-sidebar-foreground transition-colors hover:bg-muted [&.active]:bg-muted [&.active]:text-accent"
+          >
+            <LayoutTemplate className="h-4 w-4" />
+            Templates
+          </Link>
         </div>
 
         {/* Spaces list */}
@@ -92,24 +122,116 @@ export function Sidebar({ onOpenPalette }: SidebarProps) {
           </nav>
         </div>
 
-        {/* Footer */}
+        {/* Footer with user menu */}
         <div className="border-t border-border px-3 py-3">
-          <div className="flex items-center gap-2">
-            <Link
-              to="/admin"
-              className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              <Settings className="h-4 w-4" />
-              <span>Admin</span>
-            </Link>
-            <a
-              href="#"
-              className="flex items-center gap-1 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              <span>NightOwl</span>
-              <ExternalLink className="h-3 w-3" />
-            </a>
-          </div>
+          {profile ? (
+            <div className="relative" ref={userMenuRef}>
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted"
+              >
+                <UserAvatar profile={profile} size="sm" />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium text-sidebar-foreground">
+                    {profile.display_name || profile.email}
+                  </div>
+                  <div className="truncate text-xs text-muted-foreground">
+                    {profile.role} · {profile.auth_method === 'local' ? 'local admin' : `via ${profile.auth_method.toUpperCase()}`}
+                  </div>
+                </div>
+              </button>
+
+              {/* User dropdown menu */}
+              {showUserMenu && (
+                <div className="absolute bottom-full left-0 right-0 z-50 mb-1 rounded-lg border border-border bg-card shadow-lg">
+                  <div className="border-b border-border px-3 py-2.5">
+                    <div className="truncate text-sm font-medium text-foreground">
+                      {profile.display_name || 'User'}
+                    </div>
+                    <div className="truncate text-xs text-muted-foreground">{profile.email}</div>
+                  </div>
+
+                  <div className="py-1">
+                    <Link
+                      to="/profile"
+                      onClick={() => setShowUserMenu(false)}
+                      className="flex items-center gap-2 px-3 py-1.5 text-sm text-sidebar-foreground transition-colors hover:bg-muted"
+                    >
+                      <User className="h-4 w-4" />
+                      Profile
+                    </Link>
+                    <Link
+                      to="/profile/tokens"
+                      onClick={() => setShowUserMenu(false)}
+                      className="flex items-center gap-2 px-3 py-1.5 text-sm text-sidebar-foreground transition-colors hover:bg-muted"
+                    >
+                      <Key className="h-4 w-4" />
+                      Personal tokens
+                    </Link>
+                    {profile.role === 'admin' && (
+                      <Link
+                        to="/admin"
+                        onClick={() => setShowUserMenu(false)}
+                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-sidebar-foreground transition-colors hover:bg-muted"
+                      >
+                        <Settings className="h-4 w-4" />
+                        Admin
+                      </Link>
+                    )}
+                    <button
+                      onClick={() => {
+                        setDarkMode(!darkMode)
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-sidebar-foreground transition-colors hover:bg-muted"
+                    >
+                      {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                      {darkMode ? 'Light mode' : 'Dark mode'}
+                    </button>
+                  </div>
+
+                  <div className="border-t border-border py-1">
+                    <a
+                      href="#"
+                      className="flex items-center gap-2 px-3 py-1.5 text-sm text-sidebar-foreground transition-colors hover:bg-muted"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      NightOwl
+                    </a>
+                  </div>
+
+                  <div className="border-t border-border py-1">
+                    <button
+                      onClick={() => {
+                        setShowUserMenu(false)
+                        logout()
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-red-400 transition-colors hover:bg-muted"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Sign out
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Link
+                to="/admin"
+                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <Settings className="h-4 w-4" />
+                <span>Admin</span>
+              </Link>
+              <a
+                href="#"
+                className="flex items-center gap-1 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <span>NightOwl</span>
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
+          )}
         </div>
       </aside>
 

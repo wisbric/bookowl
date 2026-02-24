@@ -10,12 +10,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createAPIKey = `-- name: CreateAPIKey :one
 INSERT INTO public.api_keys (tenant_id, key_hash, key_prefix, description, role)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, tenant_id, key_hash, key_prefix, description, role, created_at
+RETURNING id, tenant_id, key_hash, key_prefix, description, role, created_at, user_id, is_personal, expires_at, last_used_at
 `
 
 type CreateAPIKeyParams struct {
@@ -43,6 +44,53 @@ func (q *Queries) CreateAPIKey(ctx context.Context, arg CreateAPIKeyParams) (Api
 		&i.Description,
 		&i.Role,
 		&i.CreatedAt,
+		&i.UserID,
+		&i.IsPersonal,
+		&i.ExpiresAt,
+		&i.LastUsedAt,
+	)
+	return i, err
+}
+
+const createPersonalToken = `-- name: CreatePersonalToken :one
+INSERT INTO public.api_keys (tenant_id, key_hash, key_prefix, description, role, user_id, is_personal, expires_at)
+VALUES ($1, $2, $3, $4, $5, $6, true, $7)
+RETURNING id, tenant_id, key_hash, key_prefix, description, role, created_at, user_id, is_personal, expires_at, last_used_at
+`
+
+type CreatePersonalTokenParams struct {
+	TenantID    uuid.UUID          `json:"tenant_id"`
+	KeyHash     string             `json:"key_hash"`
+	KeyPrefix   string             `json:"key_prefix"`
+	Description string             `json:"description"`
+	Role        string             `json:"role"`
+	UserID      pgtype.UUID        `json:"user_id"`
+	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
+}
+
+func (q *Queries) CreatePersonalToken(ctx context.Context, arg CreatePersonalTokenParams) (ApiKey, error) {
+	row := q.db.QueryRow(ctx, createPersonalToken,
+		arg.TenantID,
+		arg.KeyHash,
+		arg.KeyPrefix,
+		arg.Description,
+		arg.Role,
+		arg.UserID,
+		arg.ExpiresAt,
+	)
+	var i ApiKey
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.KeyHash,
+		&i.KeyPrefix,
+		&i.Description,
+		&i.Role,
+		&i.CreatedAt,
+		&i.UserID,
+		&i.IsPersonal,
+		&i.ExpiresAt,
+		&i.LastUsedAt,
 	)
 	return i, err
 }
@@ -62,9 +110,25 @@ func (q *Queries) DeleteAPIKey(ctx context.Context, arg DeleteAPIKeyParams) erro
 	return err
 }
 
+const deletePersonalToken = `-- name: DeletePersonalToken :exec
+DELETE FROM public.api_keys
+WHERE id = $1 AND tenant_id = $2 AND user_id = $3 AND is_personal = true
+`
+
+type DeletePersonalTokenParams struct {
+	ID       uuid.UUID   `json:"id"`
+	TenantID uuid.UUID   `json:"tenant_id"`
+	UserID   pgtype.UUID `json:"user_id"`
+}
+
+func (q *Queries) DeletePersonalToken(ctx context.Context, arg DeletePersonalTokenParams) error {
+	_, err := q.db.Exec(ctx, deletePersonalToken, arg.ID, arg.TenantID, arg.UserID)
+	return err
+}
+
 const getAPIKeyByHash = `-- name: GetAPIKeyByHash :one
 SELECT
-    ak.id, ak.tenant_id, ak.key_hash, ak.key_prefix, ak.description, ak.role, ak.created_at,
+    ak.id, ak.tenant_id, ak.key_hash, ak.key_prefix, ak.description, ak.role, ak.created_at, ak.user_id, ak.is_personal, ak.expires_at, ak.last_used_at,
     t.slug AS tenant_slug
 FROM public.api_keys ak
 JOIN public.tenants t ON t.id = ak.tenant_id
@@ -72,14 +136,18 @@ WHERE ak.key_hash = $1
 `
 
 type GetAPIKeyByHashRow struct {
-	ID          uuid.UUID `json:"id"`
-	TenantID    uuid.UUID `json:"tenant_id"`
-	KeyHash     string    `json:"key_hash"`
-	KeyPrefix   string    `json:"key_prefix"`
-	Description string    `json:"description"`
-	Role        string    `json:"role"`
-	CreatedAt   time.Time `json:"created_at"`
-	TenantSlug  string    `json:"tenant_slug"`
+	ID          uuid.UUID          `json:"id"`
+	TenantID    uuid.UUID          `json:"tenant_id"`
+	KeyHash     string             `json:"key_hash"`
+	KeyPrefix   string             `json:"key_prefix"`
+	Description string             `json:"description"`
+	Role        string             `json:"role"`
+	CreatedAt   time.Time          `json:"created_at"`
+	UserID      pgtype.UUID        `json:"user_id"`
+	IsPersonal  bool               `json:"is_personal"`
+	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
+	LastUsedAt  pgtype.Timestamptz `json:"last_used_at"`
+	TenantSlug  string             `json:"tenant_slug"`
 }
 
 func (q *Queries) GetAPIKeyByHash(ctx context.Context, keyHash string) (GetAPIKeyByHashRow, error) {
@@ -93,13 +161,17 @@ func (q *Queries) GetAPIKeyByHash(ctx context.Context, keyHash string) (GetAPIKe
 		&i.Description,
 		&i.Role,
 		&i.CreatedAt,
+		&i.UserID,
+		&i.IsPersonal,
+		&i.ExpiresAt,
+		&i.LastUsedAt,
 		&i.TenantSlug,
 	)
 	return i, err
 }
 
 const getAPIKeyByID = `-- name: GetAPIKeyByID :one
-SELECT id, tenant_id, key_hash, key_prefix, description, role, created_at FROM public.api_keys
+SELECT id, tenant_id, key_hash, key_prefix, description, role, created_at, user_id, is_personal, expires_at, last_used_at FROM public.api_keys
 WHERE id = $1
 `
 
@@ -114,13 +186,17 @@ func (q *Queries) GetAPIKeyByID(ctx context.Context, id uuid.UUID) (ApiKey, erro
 		&i.Description,
 		&i.Role,
 		&i.CreatedAt,
+		&i.UserID,
+		&i.IsPersonal,
+		&i.ExpiresAt,
+		&i.LastUsedAt,
 	)
 	return i, err
 }
 
 const listAPIKeysByTenant = `-- name: ListAPIKeysByTenant :many
-SELECT id, tenant_id, key_hash, key_prefix, description, role, created_at FROM public.api_keys
-WHERE tenant_id = $1
+SELECT id, tenant_id, key_hash, key_prefix, description, role, created_at, user_id, is_personal, expires_at, last_used_at FROM public.api_keys
+WHERE tenant_id = $1 AND is_personal = false
 ORDER BY created_at DESC
 `
 
@@ -141,6 +217,10 @@ func (q *Queries) ListAPIKeysByTenant(ctx context.Context, tenantID uuid.UUID) (
 			&i.Description,
 			&i.Role,
 			&i.CreatedAt,
+			&i.UserID,
+			&i.IsPersonal,
+			&i.ExpiresAt,
+			&i.LastUsedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -150,4 +230,58 @@ func (q *Queries) ListAPIKeysByTenant(ctx context.Context, tenantID uuid.UUID) (
 		return nil, err
 	}
 	return items, nil
+}
+
+const listPersonalTokens = `-- name: ListPersonalTokens :many
+SELECT id, tenant_id, key_hash, key_prefix, description, role, created_at, user_id, is_personal, expires_at, last_used_at FROM public.api_keys
+WHERE tenant_id = $1 AND user_id = $2 AND is_personal = true
+ORDER BY created_at DESC
+`
+
+type ListPersonalTokensParams struct {
+	TenantID uuid.UUID   `json:"tenant_id"`
+	UserID   pgtype.UUID `json:"user_id"`
+}
+
+func (q *Queries) ListPersonalTokens(ctx context.Context, arg ListPersonalTokensParams) ([]ApiKey, error) {
+	rows, err := q.db.Query(ctx, listPersonalTokens, arg.TenantID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ApiKey{}
+	for rows.Next() {
+		var i ApiKey
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.KeyHash,
+			&i.KeyPrefix,
+			&i.Description,
+			&i.Role,
+			&i.CreatedAt,
+			&i.UserID,
+			&i.IsPersonal,
+			&i.ExpiresAt,
+			&i.LastUsedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateAPIKeyLastUsed = `-- name: UpdateAPIKeyLastUsed :exec
+UPDATE public.api_keys
+SET last_used_at = now()
+WHERE id = $1
+`
+
+func (q *Queries) UpdateAPIKeyLastUsed(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, updateAPIKeyLastUsed, id)
+	return err
 }

@@ -1,0 +1,36 @@
+{
+  "name": "Runbook",
+  "description": "Step-by-step operational runbook with prerequisites, procedure, and escalation path",
+  "doc_type": "runbook",
+  "icon": "book-open",
+  "sort_order": 1,
+  "content": {
+    "type": "doc",
+    "content": [
+      { "type": "heading", "attrs": {"level": 1}, "content": [{"type": "text", "text": "{{runbook_title}}"}] },
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Overview"}] },
+      { "type": "paragraph", "content": [{"type": "text", "text": "Brief description of when to use this runbook and what it covers."}] },
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Prerequisites"}] },
+      { "type": "bulletList", "content": [
+        { "type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Access to the production cluster"}]}] },
+        { "type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "kubectl configured for the target environment"}]}] }
+      ]},
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Procedure"}] },
+      { "type": "orderedList", "content": [
+        { "type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Step 1: Describe the first action"}]}] },
+        { "type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Step 2: Describe the next action"}]}] },
+        { "type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Step 3: Verify the result"}]}] }
+      ]},
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Verification"}] },
+      { "type": "paragraph", "content": [{"type": "text", "text": "How to confirm the procedure was successful."}] },
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Escalation"}] },
+      { "type": "paragraph", "content": [{"type": "text", "text": "If the issue is not resolved:"}] },
+      { "type": "bulletList", "content": [
+        { "type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Escalate to {{escalation_contact}}"}]}] },
+        { "type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Open an incident in NightOwl if severity is critical"}]}] }
+      ]},
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Rollback"}] },
+      { "type": "paragraph", "content": [{"type": "text", "text": "Steps to undo changes if the procedure causes further issues."}] }
+    ]
+  }
+}

@@ -27,7 +27,23 @@ SET role = $2, updated_at = now()
 WHERE id = $1
 RETURNING *;
 
+-- name: UpdateUserProfile :one
+UPDATE users
+SET display_name = $2, timezone = $3, updated_at = now()
+WHERE id = $1
+RETURNING *;
+
+-- name: UpdateUserAvatar :one
+UPDATE users
+SET avatar_storage_id = $2, updated_at = now()
+WHERE id = $1
+RETURNING *;
+
 -- name: DeactivateUser :exec
 UPDATE users
 SET is_active = false, updated_at = now()
 WHERE id = $1;
+
+-- name: GetUsersByEmails :many
+SELECT * FROM users
+WHERE email = ANY(@emails::text[]) AND is_active = true;

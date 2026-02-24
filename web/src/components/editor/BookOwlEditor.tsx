@@ -13,6 +13,7 @@ import { common, createLowlight } from 'lowlight'
 import { useEffect, useRef, useCallback } from 'react'
 import { CalloutBlock } from './extensions/CalloutBlock'
 import { LiveContextBlock } from './extensions/LiveContextBlock'
+import { DiagramBlock } from './extensions/DiagramBlock'
 import { EditorToolbar } from './EditorToolbar'
 import { api } from '@/api/client'
 import type { ImageUploadResponse } from '@/api/client'
@@ -65,6 +66,7 @@ export function BookOwlEditor({ content, editable, onSave }: BookOwlEditorProps)
       }),
       CalloutBlock,
       LiveContextBlock,
+      DiagramBlock,
     ],
     content,
     editable,

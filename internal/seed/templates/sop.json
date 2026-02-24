@@ -1,0 +1,36 @@
+{
+  "name": "Standard Operating Procedure",
+  "description": "SOP with scope, responsibilities, procedure steps, and exceptions",
+  "doc_type": "sop",
+  "icon": "clipboard-list",
+  "sort_order": 2,
+  "content": {
+    "type": "doc",
+    "content": [
+      { "type": "heading", "attrs": {"level": 1}, "content": [{"type": "text", "text": "SOP: {{procedure_title}}"}] },
+      { "type": "paragraph", "content": [{"type": "text", "marks": [{"type": "bold"}], "text": "Version: "}, {"type": "text", "text": "1.0"}] },
+      { "type": "paragraph", "content": [{"type": "text", "marks": [{"type": "bold"}], "text": "Effective date: "}, {"type": "text", "text": "{{effective_date}}"}] },
+      { "type": "paragraph", "content": [{"type": "text", "marks": [{"type": "bold"}], "text": "Owner: "}, {"type": "text", "text": "{{owner}}"}] },
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Purpose"}] },
+      { "type": "paragraph", "content": [{"type": "text", "text": "Describe the purpose of this procedure and the problem it addresses."}] },
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Scope"}] },
+      { "type": "paragraph", "content": [{"type": "text", "text": "Define what this SOP covers and what is out of scope."}] },
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Responsibilities"}] },
+      { "type": "bulletList", "content": [
+        { "type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "marks": [{"type": "bold"}], "text": "Process owner:"}, {"type": "text", "text": " Responsible for maintaining this SOP"}]}] },
+        { "type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "marks": [{"type": "bold"}], "text": "Executor:"}, {"type": "text", "text": " Responsible for following this SOP"}]}] },
+        { "type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "marks": [{"type": "bold"}], "text": "Approver:"}, {"type": "text", "text": " Responsible for approving changes"}]}] }
+      ]},
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Procedure"}] },
+      { "type": "orderedList", "content": [
+        { "type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Step 1: Describe the first step in detail"}]}] },
+        { "type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Step 2: Describe the second step"}]}] },
+        { "type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Step 3: Document any decision points"}]}] }
+      ]},
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Exceptions"}] },
+      { "type": "paragraph", "content": [{"type": "text", "text": "Document any known exceptions to this procedure and how to handle them."}] },
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "References"}] },
+      { "type": "paragraph", "content": [{"type": "text", "text": "List related documents, policies, or external resources."}] }
+    ]
+  }
+}

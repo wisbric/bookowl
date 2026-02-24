@@ -1,0 +1,42 @@
+{
+  "name": "Change Request",
+  "description": "RFC-style change request for change control processes, compatible with IT-Grundschutz requirements",
+  "doc_type": "document",
+  "icon": "file-diff",
+  "sort_order": 7,
+  "content": {
+    "type": "doc",
+    "content": [
+      { "type": "heading", "attrs": {"level": 1}, "content": [{"type": "text", "text": "Change Request: {{change_title}}"}] },
+      { "type": "paragraph", "content": [{"type": "text", "marks": [{"type": "bold"}], "text": "CR Number: "}, {"type": "text", "text": "{{cr_number}}"}] },
+      { "type": "paragraph", "content": [{"type": "text", "marks": [{"type": "bold"}], "text": "Requestor: "}, {"type": "text", "text": "{{requestor}}"}] },
+      { "type": "paragraph", "content": [{"type": "text", "marks": [{"type": "bold"}], "text": "Date: "}, {"type": "text", "text": "{{date}}"}] },
+      { "type": "paragraph", "content": [{"type": "text", "marks": [{"type": "bold"}], "text": "Priority: "}, {"type": "text", "text": "{{priority}}"}] },
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Description of Change"}] },
+      { "type": "paragraph", "content": [{"type": "text", "text": "Describe the proposed change in detail."}] },
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Justification"}] },
+      { "type": "paragraph", "content": [{"type": "text", "text": "Why is this change necessary? What problem does it solve?"}] },
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Impact Assessment"}] },
+      { "type": "bulletList", "content": [
+        { "type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "marks": [{"type": "bold"}], "text": "Affected systems:"}, {"type": "text", "text": " List all affected systems"}]}] },
+        { "type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "marks": [{"type": "bold"}], "text": "Downtime required:"}, {"type": "text", "text": " Yes / No — estimated duration"}]}] },
+        { "type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "marks": [{"type": "bold"}], "text": "User impact:"}, {"type": "text", "text": " Describe impact on end users"}]}] },
+        { "type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "marks": [{"type": "bold"}], "text": "Security implications:"}, {"type": "text", "text": " Describe any security considerations"}]}] }
+      ]},
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Implementation Plan"}] },
+      { "type": "orderedList", "content": [
+        { "type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Pre-change: Backup and preparation steps"}]}] },
+        { "type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Execution: Step-by-step implementation"}]}] },
+        { "type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Verification: How to confirm success"}]}] }
+      ]},
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Rollback Plan"}] },
+      { "type": "paragraph", "content": [{"type": "text", "text": "Steps to revert the change if issues arise."}] },
+      { "type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Approvals"}] },
+      { "type": "taskList", "content": [
+        { "type": "taskItem", "attrs": {"checked": false}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Technical review — {{reviewer}}"}]}] },
+        { "type": "taskItem", "attrs": {"checked": false}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Security review — {{security_reviewer}}"}]}] },
+        { "type": "taskItem", "attrs": {"checked": false}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Management approval — {{manager}}"}]}] }
+      ]}
+    ]
+  }
+}

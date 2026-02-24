@@ -26,13 +26,13 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const { data, isLoading } = useQuery({
     queryKey: ['palette-search', debouncedQuery],
     queryFn: () =>
-      api.get<{ items: SearchResult[] }>(
+      api.get<SearchResult[]>(
         `/search?q=${encodeURIComponent(debouncedQuery)}&limit=8`,
       ),
     enabled: debouncedQuery.length > 1,
   })
 
-  const results = data?.items || []
+  const results = data || []
 
   // Focus input when opened.
   useEffect(() => {

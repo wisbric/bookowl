@@ -30,6 +30,7 @@ type CreateRequest struct {
 	Position           int32            `json:"position,omitempty"`
 	NightOwlIncidentID *string          `json:"nightowl_incident_id,omitempty"`
 	NightOwlAlertID    *string          `json:"nightowl_alert_id,omitempty"`
+	TemplateID         *uuid.UUID       `json:"template_id,omitempty"`
 }
 
 type UpdateRequest struct {
@@ -161,6 +162,11 @@ func ExtractText(content json.RawMessage) string {
 		Content json.RawMessage `json:"content"`
 	}
 	if err := json.Unmarshal(content, &node); err != nil {
+		return ""
+	}
+
+	// Skip diagram blocks — no meaningful text to extract from XML/SVG.
+	if node.Type == "diagramBlock" {
 		return ""
 	}
 

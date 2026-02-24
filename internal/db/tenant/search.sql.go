@@ -75,19 +75,42 @@ func (q *Queries) GetSpaceTree(ctx context.Context, spaceID uuid.UUID) ([]GetSpa
 }
 
 const searchDocuments = `-- name: SearchDocuments :many
-SELECT
-    d.id, d.title, d.doc_type, d.slug, d.space_id, d.collection_id,
-    s.name AS space_name, s.slug AS space_slug,
-    ts_rank(d.search_vector, plainto_tsquery('english', $1::text)) AS rank,
-    ts_headline('english', d.title, plainto_tsquery('english', $1::text)) AS title_highlight,
-    ts_headline('english', d.content_text, plainto_tsquery('english', $1::text),
-        'StartSel=<mark>, StopSel=</mark>, MaxWords=30, MinWords=15') AS content_highlight
-FROM documents d
-JOIN spaces s ON s.id = d.space_id
-WHERE d.search_vector @@ plainto_tsquery('english', $1::text)
-  AND d.status != 'archived'
-ORDER BY rank DESC
-LIMIT $3 OFFSET $2
+WITH fts AS (
+    SELECT
+        d.id, d.title, d.doc_type, d.slug, d.space_id, d.collection_id,
+        s.name AS space_name, s.slug AS space_slug,
+        ts_rank(d.search_vector, plainto_tsquery('english', $1::text)) AS rank,
+        ts_headline('english', d.title, plainto_tsquery('english', $1::text)) AS title_highlight,
+        ts_headline('english', d.content_text, plainto_tsquery('english', $1::text),
+            'StartSel=<mark>, StopSel=</mark>, MaxWords=30, MinWords=15') AS content_highlight
+    FROM documents d
+    JOIN spaces s ON s.id = d.space_id
+    WHERE d.search_vector @@ plainto_tsquery('english', $1::text)
+      AND d.status != 'archived'
+    ORDER BY rank DESC
+    LIMIT $3 OFFSET $2
+),
+fuzzy AS (
+    SELECT
+        d.id, d.title, d.doc_type, d.slug, d.space_id, d.collection_id,
+        s.name AS space_name, s.slug AS space_slug,
+        GREATEST(
+            similarity(d.title, $1::text),
+            similarity(d.content_text, $1::text) * 0.5
+        )::float4 AS rank,
+        d.title AS title_highlight,
+        '' AS content_highlight
+    FROM documents d
+    JOIN spaces s ON s.id = d.space_id
+    WHERE d.status != 'archived'
+      AND (d.title % $1::text OR d.content_text % $1::text)
+      AND NOT EXISTS (SELECT 1 FROM fts)
+    ORDER BY rank DESC
+    LIMIT $3 OFFSET $2
+)
+SELECT id, title, doc_type, slug, space_id, collection_id, space_name, space_slug, rank, title_highlight, content_highlight FROM fts
+UNION ALL
+SELECT id, title, doc_type, slug, space_id, collection_id, space_name, space_slug, rank, title_highlight, content_highlight FROM fuzzy
 `
 
 type SearchDocumentsParams struct {
@@ -143,20 +166,44 @@ func (q *Queries) SearchDocuments(ctx context.Context, arg SearchDocumentsParams
 }
 
 const searchDocumentsBySpace = `-- name: SearchDocumentsBySpace :many
-SELECT
-    d.id, d.title, d.doc_type, d.slug, d.space_id, d.collection_id,
-    s.name AS space_name, s.slug AS space_slug,
-    ts_rank(d.search_vector, plainto_tsquery('english', $1::text)) AS rank,
-    ts_headline('english', d.title, plainto_tsquery('english', $1::text)) AS title_highlight,
-    ts_headline('english', d.content_text, plainto_tsquery('english', $1::text),
-        'StartSel=<mark>, StopSel=</mark>, MaxWords=30, MinWords=15') AS content_highlight
-FROM documents d
-JOIN spaces s ON s.id = d.space_id
-WHERE d.search_vector @@ plainto_tsquery('english', $1::text)
-  AND d.status != 'archived'
-  AND d.space_id = $2
-ORDER BY rank DESC
-LIMIT $4 OFFSET $3
+WITH fts AS (
+    SELECT
+        d.id, d.title, d.doc_type, d.slug, d.space_id, d.collection_id,
+        s.name AS space_name, s.slug AS space_slug,
+        ts_rank(d.search_vector, plainto_tsquery('english', $1::text)) AS rank,
+        ts_headline('english', d.title, plainto_tsquery('english', $1::text)) AS title_highlight,
+        ts_headline('english', d.content_text, plainto_tsquery('english', $1::text),
+            'StartSel=<mark>, StopSel=</mark>, MaxWords=30, MinWords=15') AS content_highlight
+    FROM documents d
+    JOIN spaces s ON s.id = d.space_id
+    WHERE d.search_vector @@ plainto_tsquery('english', $1::text)
+      AND d.status != 'archived'
+      AND d.space_id = $2
+    ORDER BY rank DESC
+    LIMIT $4 OFFSET $3
+),
+fuzzy AS (
+    SELECT
+        d.id, d.title, d.doc_type, d.slug, d.space_id, d.collection_id,
+        s.name AS space_name, s.slug AS space_slug,
+        GREATEST(
+            similarity(d.title, $1::text),
+            similarity(d.content_text, $1::text) * 0.5
+        )::float4 AS rank,
+        d.title AS title_highlight,
+        '' AS content_highlight
+    FROM documents d
+    JOIN spaces s ON s.id = d.space_id
+    WHERE d.status != 'archived'
+      AND d.space_id = $2
+      AND (d.title % $1::text OR d.content_text % $1::text)
+      AND NOT EXISTS (SELECT 1 FROM fts)
+    ORDER BY rank DESC
+    LIMIT $4 OFFSET $3
+)
+SELECT id, title, doc_type, slug, space_id, collection_id, space_name, space_slug, rank, title_highlight, content_highlight FROM fts
+UNION ALL
+SELECT id, title, doc_type, slug, space_id, collection_id, space_name, space_slug, rank, title_highlight, content_highlight FROM fuzzy
 `
 
 type SearchDocumentsBySpaceParams struct {
@@ -218,20 +265,44 @@ func (q *Queries) SearchDocumentsBySpace(ctx context.Context, arg SearchDocument
 }
 
 const searchDocumentsByType = `-- name: SearchDocumentsByType :many
-SELECT
-    d.id, d.title, d.doc_type, d.slug, d.space_id, d.collection_id,
-    s.name AS space_name, s.slug AS space_slug,
-    ts_rank(d.search_vector, plainto_tsquery('english', $1::text)) AS rank,
-    ts_headline('english', d.title, plainto_tsquery('english', $1::text)) AS title_highlight,
-    ts_headline('english', d.content_text, plainto_tsquery('english', $1::text),
-        'StartSel=<mark>, StopSel=</mark>, MaxWords=30, MinWords=15') AS content_highlight
-FROM documents d
-JOIN spaces s ON s.id = d.space_id
-WHERE d.search_vector @@ plainto_tsquery('english', $1::text)
-  AND d.status != 'archived'
-  AND d.doc_type = $2
-ORDER BY rank DESC
-LIMIT $4 OFFSET $3
+WITH fts AS (
+    SELECT
+        d.id, d.title, d.doc_type, d.slug, d.space_id, d.collection_id,
+        s.name AS space_name, s.slug AS space_slug,
+        ts_rank(d.search_vector, plainto_tsquery('english', $1::text)) AS rank,
+        ts_headline('english', d.title, plainto_tsquery('english', $1::text)) AS title_highlight,
+        ts_headline('english', d.content_text, plainto_tsquery('english', $1::text),
+            'StartSel=<mark>, StopSel=</mark>, MaxWords=30, MinWords=15') AS content_highlight
+    FROM documents d
+    JOIN spaces s ON s.id = d.space_id
+    WHERE d.search_vector @@ plainto_tsquery('english', $1::text)
+      AND d.status != 'archived'
+      AND d.doc_type = $2
+    ORDER BY rank DESC
+    LIMIT $4 OFFSET $3
+),
+fuzzy AS (
+    SELECT
+        d.id, d.title, d.doc_type, d.slug, d.space_id, d.collection_id,
+        s.name AS space_name, s.slug AS space_slug,
+        GREATEST(
+            similarity(d.title, $1::text),
+            similarity(d.content_text, $1::text) * 0.5
+        )::float4 AS rank,
+        d.title AS title_highlight,
+        '' AS content_highlight
+    FROM documents d
+    JOIN spaces s ON s.id = d.space_id
+    WHERE d.status != 'archived'
+      AND d.doc_type = $2
+      AND (d.title % $1::text OR d.content_text % $1::text)
+      AND NOT EXISTS (SELECT 1 FROM fts)
+    ORDER BY rank DESC
+    LIMIT $4 OFFSET $3
+)
+SELECT id, title, doc_type, slug, space_id, collection_id, space_name, space_slug, rank, title_highlight, content_highlight FROM fts
+UNION ALL
+SELECT id, title, doc_type, slug, space_id, collection_id, space_name, space_slug, rank, title_highlight, content_highlight FROM fuzzy
 `
 
 type SearchDocumentsByTypeParams struct {
