@@ -1,18 +1,18 @@
 # Build stage
 FROM node:22-alpine AS build
 WORKDIR /app
-COPY package.json ./
-RUN npm install
+COPY package.json package-lock.json ./
+RUN npm ci
 COPY . .
 RUN npm run build
 
 # draw.io assets stage
 FROM node:22-alpine AS drawio
-ARG DRAWIO_VERSION=24.7.17
+ARG DRAWIO_VERSION=29.5.2
 RUN apk add --no-cache curl unzip && \
-    curl -L "https://github.com/jgraph/drawio/releases/download/v${DRAWIO_VERSION}/draw.io-${DRAWIO_VERSION}.war" \
-    -o drawio.war && \
-    unzip -q drawio.war -d /drawio-assets
+    curl -fL "https://github.com/jgraph/drawio/releases/download/v${DRAWIO_VERSION}/draw.war" \
+    -o draw.war && \
+    unzip -q draw.war -d /drawio-assets
 
 # Production stage
 FROM nginx:1.27-alpine
