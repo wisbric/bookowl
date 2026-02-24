@@ -1,8 +1,21 @@
+# Go
 bin/
 *.exe
 *.test
 *.out
-.env
-.env.local
 vendor/
 tmp/
+
+# Environment
+.env
+.env.local
+
+# Frontend
+web/node_modules/
+web/dist/
+web/tsconfig.app.tsbuildinfo
+web/tsconfig.node.tsbuildinfo
+
+# OS
+*.Zone.Identifier
+.DS_Store
