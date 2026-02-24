@@ -35,7 +35,7 @@ async function uploadImageFile(file: File): Promise<string | null> {
 }
 
 export function BookOwlEditor({ content, editable, onSave }: BookOwlEditorProps) {
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   const debouncedSave = useCallback(
     (json: Record<string, unknown>) => {

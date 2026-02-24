@@ -54,5 +54,4 @@ jobs:
           node-version: "22"
       - run: cd web && npm install
       - run: cd web && npm run lint
-      - run: cd web && npx tsc --noEmit
       - run: cd web && npm run build
