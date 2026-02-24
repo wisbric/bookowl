@@ -28,7 +28,7 @@ fuzzy AS (
     JOIN spaces s ON s.id = d.space_id
     WHERE d.status != 'archived'
       AND (d.title % @query::text OR d.content_text % @query::text)
-      AND NOT EXISTS (SELECT 1 FROM fts)
+      AND NOT EXISTS (SELECT 1 FROM fts WHERE fts.id = d.id)
     ORDER BY rank DESC
     LIMIT @result_limit OFFSET @result_offset
 )
@@ -68,7 +68,7 @@ fuzzy AS (
     WHERE d.status != 'archived'
       AND d.space_id = @space_id
       AND (d.title % @query::text OR d.content_text % @query::text)
-      AND NOT EXISTS (SELECT 1 FROM fts)
+      AND NOT EXISTS (SELECT 1 FROM fts WHERE fts.id = d.id)
     ORDER BY rank DESC
     LIMIT @result_limit OFFSET @result_offset
 )
@@ -108,7 +108,7 @@ fuzzy AS (
     WHERE d.status != 'archived'
       AND d.doc_type = @doc_type
       AND (d.title % @query::text OR d.content_text % @query::text)
-      AND NOT EXISTS (SELECT 1 FROM fts)
+      AND NOT EXISTS (SELECT 1 FROM fts WHERE fts.id = d.id)
     ORDER BY rank DESC
     LIMIT @result_limit OFFSET @result_offset
 )

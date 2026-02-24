@@ -37,13 +37,35 @@ function sanitizeSvg(svg: string): string {
   return new XMLSerializer().serializeToString(doc)
 }
 
+// Use local draw.io in production (Docker), hosted embed in dev.
+const DRAWIO_PARAMS = 'embed=1&proto=json&spin=1&libraries=1&lang=en'
+const DRAWIO_LOCAL = `/drawio/index.html?${DRAWIO_PARAMS}`
+const DRAWIO_HOSTED = `https://embed.diagrams.net?${DRAWIO_PARAMS}`
+
+function getDrawioUrl(): string {
+  // In production (served by nginx), /drawio/ is available.
+  // In dev (Vite), use the hosted embed.
+  if (import.meta.env.DEV) return DRAWIO_HOSTED
+  return DRAWIO_LOCAL
+}
+
+function getDrawioOrigin(url: string): string {
+  try {
+    return new URL(url).origin
+  } catch {
+    return window.location.origin
+  }
+}
+
 export function DiagramModal({ xml, onSave, onClose }: DiagramModalProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const pendingExport = useRef<string | null>(null)
+  const drawioUrl = getDrawioUrl()
+  const drawioOrigin = getDrawioOrigin(drawioUrl)
 
   const handleMessage = useCallback(
     (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return
+      if (event.origin !== drawioOrigin) return
 
       let msg: { event?: string; xml?: string; data?: string }
       try {
@@ -56,7 +78,7 @@ export function DiagramModal({ xml, onSave, onClose }: DiagramModalProps) {
         // draw.io is ready — load the diagram
         iframeRef.current?.contentWindow?.postMessage(
           JSON.stringify({ action: 'load', xml: xml || '' }),
-          window.location.origin,
+          drawioOrigin,
         )
       }
 
@@ -65,7 +87,7 @@ export function DiagramModal({ xml, onSave, onClose }: DiagramModalProps) {
         pendingExport.current = sanitizeDiagramXml(msg.xml)
         iframeRef.current?.contentWindow?.postMessage(
           JSON.stringify({ action: 'export', format: 'svg' }),
-          window.location.origin,
+          drawioOrigin,
         )
       }
 
@@ -85,7 +107,7 @@ export function DiagramModal({ xml, onSave, onClose }: DiagramModalProps) {
         onClose()
       }
     },
-    [xml, onSave, onClose],
+    [xml, onSave, onClose, drawioOrigin],
   )
 
   useEffect(() => {
@@ -98,7 +120,7 @@ export function DiagramModal({ xml, onSave, onClose }: DiagramModalProps) {
       <div className="relative h-[90vh] w-[95vw] overflow-hidden rounded-xl border border-border bg-background shadow-2xl">
         <iframe
           ref={iframeRef}
-          src="/drawio/index.html?embed=1&proto=json&spin=1&libraries=1&lang=en"
+          src={drawioUrl}
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
           className="h-full w-full border-0"
           title="draw.io diagram editor"
