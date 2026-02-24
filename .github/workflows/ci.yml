@@ -36,7 +36,7 @@ jobs:
       - name: Lint
         uses: golangci/golangci-lint-action@v6
         with:
-          version: latest
+          version: v2.4
       - name: Test
         run: make test
         env:
@@ -52,9 +52,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: npm
-          cache-dependency-path: web/package-lock.json
-      - run: cd web && npm ci
+      - run: cd web && npm install
       - run: cd web && npm run lint
       - run: cd web && npx tsc --noEmit
       - run: cd web && npm run build
