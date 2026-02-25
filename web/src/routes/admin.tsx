@@ -20,7 +20,7 @@ function AdminPage() {
   ]
 
   return (
-    <div className="mx-auto max-w-3xl px-8 py-8">
+    <div className="max-w-[860px] px-8 py-8">
       <div className="mb-8 flex items-center gap-3">
         <Settings className="h-6 w-6 text-accent" />
         <h1 className="text-2xl font-bold tracking-tight">Admin</h1>
@@ -49,9 +49,6 @@ function AdminPage() {
         {activeTab === 'system' && <SystemStatusSection />}
       </div>
 
-      <footer className="mt-16 text-center text-sm text-muted-foreground">
-        BookOwl v0.1.0 — A Wisbric product
-      </footer>
     </div>
   )
 }

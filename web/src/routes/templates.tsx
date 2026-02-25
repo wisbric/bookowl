@@ -55,7 +55,7 @@ function TemplatesPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-8 py-6">
+    <div className="max-w-[860px] px-8 py-6">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Templates</h1>
         <button

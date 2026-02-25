@@ -27,7 +27,7 @@ function PersonalTokensPage() {
   })
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-8">
+    <div className="max-w-[860px] px-6 py-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Personal Access Tokens</h1>

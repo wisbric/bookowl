@@ -4,6 +4,7 @@ import Suggestion from '@tiptap/suggestion'
 import type { SuggestionProps, SuggestionKeyDownProps } from '@tiptap/suggestion'
 import tippy from 'tippy.js'
 import type { Instance as TippyInstance } from 'tippy.js'
+import 'tippy.js/dist/tippy.css'
 import {
   forwardRef,
   useEffect,
@@ -171,6 +172,9 @@ export const SlashCommandExtension = Extension.create({
                 interactive: true,
                 trigger: 'manual',
                 placement: 'bottom-start',
+                arrow: false,
+                theme: 'slash-menu',
+                zIndex: 50,
               })
             },
 

@@ -1,0 +1,18 @@
+{{- if .Values.collab.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "bookowl.fullname" . }}-collab
+  labels:
+    {{- include "bookowl.labels" . | nindent 4 }}
+    app.kubernetes.io/component: collab
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.collab.port }}
+      targetPort: ws
+      protocol: TCP
+      name: ws
+  selector:
+    {{- include "bookowl.collabSelectorLabels" . | nindent 4 }}
+{{- end }}

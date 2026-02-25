@@ -20,7 +20,7 @@ function SpaceIndex() {
   })
 
   return (
-    <div className="px-8 py-8">
+    <div className="max-w-[860px] px-8 py-8">
       {space && (
         <>
           <div className="flex items-center gap-3">

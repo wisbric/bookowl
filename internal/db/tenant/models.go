@@ -100,6 +100,12 @@ type DocumentVersion struct {
 	CreatedAt     time.Time       `json:"created_at"`
 }
 
+type DocumentYjsState struct {
+	DocumentID uuid.UUID `json:"document_id"`
+	YjsState   []byte    `json:"yjs_state"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
+
 type Notification struct {
 	ID         uuid.UUID   `json:"id"`
 	UserID     uuid.UUID   `json:"user_id"`

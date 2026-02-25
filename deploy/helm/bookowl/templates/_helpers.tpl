@@ -90,3 +90,19 @@ Web image reference.
 {{- $tag := default .Chart.AppVersion .Values.web.image.tag -}}
 {{- printf "%s:%s" .Values.web.image.repository $tag }}
 {{- end }}
+
+{{/*
+Collab selector labels.
+*/}}
+{{- define "bookowl.collabSelectorLabels" -}}
+{{ include "bookowl.selectorLabels" . }}
+app.kubernetes.io/component: collab
+{{- end }}
+
+{{/*
+Collab image reference.
+*/}}
+{{- define "bookowl.collabImage" -}}
+{{- $tag := default .Chart.AppVersion .Values.collab.image.tag -}}
+{{- printf "%s:%s" .Values.collab.image.repository $tag }}
+{{- end }}

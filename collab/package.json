@@ -1,0 +1,27 @@
+{
+  "name": "bookowl-collab",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "start": "node dist/server.js",
+    "build": "tsc",
+    "dev": "tsx src/server.ts"
+  },
+  "dependencies": {
+    "@hocuspocus/extension-database": "^2.13.0",
+    "@hocuspocus/extension-logger": "^2.13.0",
+    "@hocuspocus/extension-redis": "^2.13.0",
+    "@hocuspocus/server": "^2.13.0",
+    "jsonwebtoken": "^9.0.0",
+    "pg": "^8.11.0",
+    "prosemirror-model": "^1.25.4",
+    "y-prosemirror": "^1.2.5",
+    "yjs": "^13.6.0"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.8.0"
+  }
+}

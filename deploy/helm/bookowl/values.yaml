@@ -28,11 +28,16 @@ api:
       cpu: 500m
       memory: 256Mi
 
+secretKey: ""   # 32-byte hex, used to sign session JWTs (set via external secret)
+
 database:
   url: ""   # set via external secret
 
 redis:
   url: ""   # set via external secret
+  host: ""
+  port: "6379"
+  password: ""
 
 oidc:
   issuerUrl: ""
@@ -41,6 +46,25 @@ oidc:
 nightowl:
   apiUrl: ""
   apiKey: ""   # set via external secret
+
+collab:
+  enabled: true
+  image:
+    repository: ghcr.io/wisbric/bookowl-collab
+    tag: ""
+  replicas: 2
+  port: 1234
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  wsUrl: wss://collab.bookowl.example.com
+  ingress:
+    enabled: true
+    host: collab.bookowl.example.com
 
 ingress:
   enabled: true

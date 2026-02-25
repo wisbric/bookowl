@@ -55,3 +55,13 @@ jobs:
       - run: cd web && npm install
       - run: cd web && npm run lint
       - run: cd web && npm run build
+
+  collab:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: cd collab && npm ci
+      - run: cd collab && npm run build

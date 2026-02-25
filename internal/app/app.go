@@ -153,6 +153,15 @@ func (a *App) setupRouter() {
 		httpserver.Respond(w, http.StatusOK, resp)
 	})
 
+	// Client config endpoint (public, no auth required — frontend fetches runtime config).
+	r.Get("/api/v1/config/client", func(w http.ResponseWriter, r *http.Request) {
+		resp := map[string]any{}
+		if a.cfg.CollabWsURL != "" {
+			resp["collab_ws_url"] = a.cfg.CollabWsURL
+		}
+		httpserver.Respond(w, http.StatusOK, resp)
+	})
+
 	// Auth handler (public, no auth required).
 	authH := authhandler.NewHandler(a.plat.DB, a.sess, a.plat.Redis)
 	r.Mount("/auth", authH.Routes())
@@ -183,7 +192,7 @@ func (a *App) setupRouter() {
 	notificationHandler := notification.NewHandler(notificationSvc)
 
 	// Integration handler (NightOwl → BookOwl).
-	integrationHandler := integration.NewHandler(documentSvc)
+	integrationHandler := integration.NewHandler(documentSvc, a.cfg.PublicURL)
 
 	// Live Context handler (BookOwl → NightOwl proxy with cache).
 	liveContextClient := livecontext.NewClient()
@@ -263,6 +272,35 @@ func (a *App) setupRouter() {
 				"status": status,
 				"checks": checks,
 			})
+		})
+
+		// Collab token — returns a short-lived JWT for WebSocket auth.
+		r.Get("/collab/token", func(w http.ResponseWriter, r *http.Request) {
+			if a.sess == nil {
+				httpserver.RespondError(w, http.StatusServiceUnavailable, "session management not configured")
+				return
+			}
+
+			// Try to extract the raw JWT from the bw_session cookie.
+			if cookie, err := r.Cookie(session.CookieName); err == nil {
+				if _, err := a.sess.Validate(cookie.Value); err == nil {
+					httpserver.Respond(w, http.StatusOK, map[string]string{"token": cookie.Value})
+					return
+				}
+			}
+
+			// Fallback: mint a short-lived token from the authenticated identity.
+			id, ok := auth.IdentityFromContext(r.Context())
+			if !ok {
+				httpserver.RespondError(w, http.StatusUnauthorized, "authentication required")
+				return
+			}
+			token, err := a.sess.MintShortLived(id.TenantSlug, id.UserID, id.Role, id.Method, 5*time.Minute)
+			if err != nil {
+				httpserver.RespondError(w, http.StatusInternalServerError, "failed to mint collab token")
+				return
+			}
+			httpserver.Respond(w, http.StatusOK, map[string]string{"token": token})
 		})
 
 		// Spaces (with nested collections).

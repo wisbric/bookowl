@@ -18,6 +18,7 @@ import { Route as ChangePasswordRouteImport } from './routes/change-password'
 import { Route as CallbackRouteImport } from './routes/callback'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ProfileIndexRouteImport } from './routes/profile.index'
 import { Route as SpacesSpaceIdRouteImport } from './routes/spaces.$spaceId'
 import { Route as ProfileTokensRouteImport } from './routes/profile.tokens'
 import { Route as SpacesSpaceIdIndexRouteImport } from './routes/spaces.$spaceId.index'
@@ -68,6 +69,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProfileIndexRoute = ProfileIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ProfileRoute,
+} as any)
 const SpacesSpaceIdRoute = SpacesSpaceIdRouteImport.update({
   id: '/spaces/$spaceId',
   path: '/spaces/$spaceId',
@@ -101,6 +107,7 @@ export interface FileRoutesByFullPath {
   '/templates': typeof TemplatesRoute
   '/profile/tokens': typeof ProfileTokensRoute
   '/spaces/$spaceId': typeof SpacesSpaceIdRouteWithChildren
+  '/profile/': typeof ProfileIndexRoute
   '/spaces/$spaceId/': typeof SpacesSpaceIdIndexRoute
   '/spaces/$spaceId/docs/$docId': typeof SpacesSpaceIdDocsDocIdRoute
 }
@@ -110,11 +117,11 @@ export interface FileRoutesByTo {
   '/callback': typeof CallbackRoute
   '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
-  '/profile': typeof ProfileRouteWithChildren
   '/recent': typeof RecentRoute
   '/search': typeof SearchRoute
   '/templates': typeof TemplatesRoute
   '/profile/tokens': typeof ProfileTokensRoute
+  '/profile': typeof ProfileIndexRoute
   '/spaces/$spaceId': typeof SpacesSpaceIdIndexRoute
   '/spaces/$spaceId/docs/$docId': typeof SpacesSpaceIdDocsDocIdRoute
 }
@@ -131,6 +138,7 @@ export interface FileRoutesById {
   '/templates': typeof TemplatesRoute
   '/profile/tokens': typeof ProfileTokensRoute
   '/spaces/$spaceId': typeof SpacesSpaceIdRouteWithChildren
+  '/profile/': typeof ProfileIndexRoute
   '/spaces/$spaceId/': typeof SpacesSpaceIdIndexRoute
   '/spaces/$spaceId/docs/$docId': typeof SpacesSpaceIdDocsDocIdRoute
 }
@@ -148,6 +156,7 @@ export interface FileRouteTypes {
     | '/templates'
     | '/profile/tokens'
     | '/spaces/$spaceId'
+    | '/profile/'
     | '/spaces/$spaceId/'
     | '/spaces/$spaceId/docs/$docId'
   fileRoutesByTo: FileRoutesByTo
@@ -157,11 +166,11 @@ export interface FileRouteTypes {
     | '/callback'
     | '/change-password'
     | '/login'
-    | '/profile'
     | '/recent'
     | '/search'
     | '/templates'
     | '/profile/tokens'
+    | '/profile'
     | '/spaces/$spaceId'
     | '/spaces/$spaceId/docs/$docId'
   id:
@@ -177,6 +186,7 @@ export interface FileRouteTypes {
     | '/templates'
     | '/profile/tokens'
     | '/spaces/$spaceId'
+    | '/profile/'
     | '/spaces/$spaceId/'
     | '/spaces/$spaceId/docs/$docId'
   fileRoutesById: FileRoutesById
@@ -259,6 +269,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/profile/': {
+      id: '/profile/'
+      path: '/'
+      fullPath: '/profile/'
+      preLoaderRoute: typeof ProfileIndexRouteImport
+      parentRoute: typeof ProfileRoute
+    }
     '/spaces/$spaceId': {
       id: '/spaces/$spaceId'
       path: '/spaces/$spaceId'
@@ -292,10 +309,12 @@ declare module '@tanstack/react-router' {
 
 interface ProfileRouteChildren {
   ProfileTokensRoute: typeof ProfileTokensRoute
+  ProfileIndexRoute: typeof ProfileIndexRoute
 }
 
 const ProfileRouteChildren: ProfileRouteChildren = {
   ProfileTokensRoute: ProfileTokensRoute,
+  ProfileIndexRoute: ProfileIndexRoute,
 }
 
 const ProfileRouteWithChildren =

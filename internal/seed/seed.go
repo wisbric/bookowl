@@ -426,7 +426,7 @@ func seedDemo(ctx context.Context, q *dbtenant.Queries, users []seedUser) error 
 		return err
 	}
 
-	// --- 6 Runbooks ---
+	// --- Runbooks ---
 	runbooks := []struct {
 		title   string
 		slug    string
@@ -438,6 +438,10 @@ func seedDemo(ctx context.Context, q *dbtenant.Queries, users []seedUser) error 
 		{"Container OOMKilled", "container-oomkilled", oomKilledContent, alertsColl, stefan},
 		{"TLS Certificate Expiry", "tls-cert-expiry", certExpiryContent, alertsColl, max},
 		{"Node Not Ready", "node-not-ready", nodeNotReadyContent, alertsColl, max},
+		{"DNS Resolution Failures", "dns-resolution-failures", dnsResolutionContent, alertsColl, anna},
+		{"High CPU Usage Troubleshooting", "high-cpu-troubleshooting", highCPUContent, alertsColl, stefan},
+		{"Ingress Troubleshooting Guide", "ingress-troubleshooting", ingressTroubleshootContent, alertsColl, max},
+		{"Secrets and Credential Rotation", "secrets-rotation", secretsRotationContent, alertsColl, anna},
 		{"PVC Stuck Pending", "pvc-stuck-pending", pvcStuckContent, k8sColl, anna},
 		{"etcd High Latency", "etcd-high-latency", etcdLatencyContent, k8sColl, anna},
 	}
@@ -493,29 +497,51 @@ func seedDemo(ctx context.Context, q *dbtenant.Queries, users []seedUser) error 
 		}
 	}
 
-	// --- 1 Document with Live Context blocks ---
-	_, err = createDocIfNotExists(ctx, q, dbtenant.CreateDocumentParams{
-		SpaceID:      platSpace.ID,
-		CollectionID: db.ValidUUID(archColl.ID),
-		Title:        "Platform Service Overview",
-		Slug:         "platform-service-overview",
-		Content:      json.RawMessage(liveContextDocContent),
-		ContentText:  "Platform Service Overview. Current on-call roster. Service health dashboard. Active alerts.",
-		DocType:      "page",
-		Status:       "published",
-		Tags:         []string{"architecture", "live-context"},
-		Icon:         db.ValidText("🦉"),
-		Position:     0,
-		CreatedBy:    createdBy,
-	})
-	if err != nil {
-		return fmt.Errorf("creating live context doc: %w", err)
+	// --- Architecture, SOPs, and guides ---
+	archDocs := []struct {
+		title   string
+		slug    string
+		content string
+		docType string
+		tags    []string
+		coll    dbtenant.Collection
+		author  dbtenant.User
+	}{
+		{"Platform Service Overview", "platform-service-overview", liveContextDocContent, "page", []string{"architecture", "live-context"}, archColl, stefan},
+		{"ADR-001: Kubernetes as Container Orchestration Platform", "adr-001-kubernetes", adrKubernetesContent, "page", []string{"architecture", "adr"}, archColl, stefan},
+		{"Monitoring and Alerting Standards", "monitoring-alerting-standards", monitoringGuideContent, "page", []string{"architecture", "monitoring"}, archColl, max},
+		{"On-Call Engineer Onboarding Guide", "on-call-onboarding", onboardingGuideContent, "sop", []string{"onboarding", "on-call"}, k8sColl, stefan},
+		{"Production Deployment Procedure", "production-deployment-procedure", deploymentSOPContent, "sop", []string{"deployment", "sop"}, k8sColl, anna},
+	}
+
+	for i, doc := range archDocs {
+		icon := "📄"
+		if doc.docType == "sop" {
+			icon = "📋"
+		}
+		_, err := createDocIfNotExists(ctx, q, dbtenant.CreateDocumentParams{
+			SpaceID:      doc.coll.SpaceID,
+			CollectionID: db.ValidUUID(doc.coll.ID),
+			Title:        doc.title,
+			Slug:         doc.slug,
+			Content:      json.RawMessage(doc.content),
+			ContentText:  extractText(doc.content),
+			DocType:      doc.docType,
+			Status:       "published",
+			Tags:         doc.tags,
+			Icon:         db.ValidText(icon),
+			Position:     int32(i + 10), // Offset to avoid collision with runbooks
+			CreatedBy:    db.ValidUUID(doc.author.ID),
+		})
+		if err != nil {
+			return fmt.Errorf("creating doc %q: %w", doc.title, err)
+		}
 	}
 
 	slog.Info("demo seed complete",
 		"runbooks", len(runbooks),
 		"post_mortems", len(pms),
-		"live_context_docs", 1,
+		"docs", len(archDocs),
 	)
 	return nil
 }

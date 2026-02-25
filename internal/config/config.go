@@ -21,6 +21,9 @@ type Config struct {
 	NightOwlAPIURL string `env:"BOOKOWL_NIGHTOWL_API_URL" envDefault:"http://localhost:8080"`
 	NightOwlAPIKey string `env:"BOOKOWL_NIGHTOWL_API_KEY"`
 
+	PublicURL    string `env:"BOOKOWL_PUBLIC_URL"`    // Frontend URL for integration links (e.g. http://localhost:3001)
+	CollabWsURL  string `env:"BOOKOWL_COLLAB_WS_URL"` // WebSocket URL for collab server (e.g. wss://collab.bookowl.example.com)
+
 	// Image storage.
 	StorageBackend   string `env:"BOOKOWL_STORAGE_BACKEND" envDefault:"local"`
 	StorageLocalPath string `env:"BOOKOWL_STORAGE_LOCAL_PATH" envDefault:"/tmp/bookowl-images"`

@@ -25,7 +25,7 @@ function RecentChangesPage() {
   )
 
   return (
-    <div className="mx-auto max-w-3xl px-8 py-8">
+    <div className="max-w-[860px] px-8 py-8">
       <div className="mb-6 flex items-center gap-2">
         <Clock className="h-5 w-5 text-accent" />
         <h1 className="text-2xl font-bold tracking-tight">Recent Changes</h1>

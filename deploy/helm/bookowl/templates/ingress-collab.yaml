@@ -1,0 +1,36 @@
+{{- if and .Values.collab.enabled .Values.collab.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "bookowl.fullname" . }}-collab
+  labels:
+    {{- include "bookowl.labels" . | nindent 4 }}
+    app.kubernetes.io/component: collab
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection "upgrade";
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  tls:
+    - secretName: {{ include "bookowl.fullname" . }}-collab-tls
+      hosts:
+        - {{ .Values.collab.ingress.host | quote }}
+  rules:
+    - host: {{ .Values.collab.ingress.host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "bookowl.fullname" . }}-collab
+                port:
+                  number: {{ .Values.collab.port }}
+{{- end }}

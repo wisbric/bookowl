@@ -4,8 +4,16 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { Pencil, Eye, Clock, ChevronLeft, MoreHorizontal, LayoutTemplate, X, MessageSquare } from 'lucide-react'
 import { api } from '@/api/client'
 import { BookOwlEditor } from '@/components/editor/BookOwlEditor'
+import { ContentRenderer } from '@/components/editor/ContentRenderer'
 import { VersionHistory } from '@/components/VersionHistory'
 import { CommentPanel } from '@/components/CommentPanel'
+import { PresenceAvatars } from '@/components/editor/PresenceAvatars'
+import { useRightPanel } from '@/components/layout/PanelContext'
+import { useCollabProvider } from '@/hooks/useCollabProvider'
+import { useCollabToken } from '@/hooks/useCollabToken'
+import { getClientConfig } from '@/config/client-config'
+import { useAuth } from '@/auth/auth-provider'
+import { getCursorColor } from '@/lib/utils'
 import { formatDistanceToNow } from 'date-fns'
 import type { Document, Space, Template, CommentCount } from '@/api/client'
 
@@ -22,6 +30,31 @@ function DocumentPage() {
   const [showMenu, setShowMenu] = useState(false)
   const [showSaveTemplate, setShowSaveTemplate] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+
+  const { setRightPanelOpen } = useRightPanel()
+  const { profile, devMode } = useAuth()
+
+  // Collab: connect to Hocuspocus when collab URL is available.
+  const clientConfig = getClientConfig()
+  const collabWsUrl = clientConfig.collab_ws_url || (devMode ? 'ws://localhost:1234' : '')
+  const collabEnabled = !!collabWsUrl
+  const tenantSlug = devMode ? 'acme' : (profile as Record<string, string> | null)?.tenant_slug || 'acme'
+  const collabToken = useCollabToken(collabEnabled)
+  const { ydoc, provider: collabProvider } = useCollabProvider({
+    documentId: docId,
+    tenantSlug,
+    token: collabToken,
+    wsUrl: collabWsUrl,
+    enabled: collabEnabled,
+  })
+  const userName = profile?.display_name || profile?.email || 'Anonymous'
+  const userColor = getCursorColor(profile?.id || 'dev-user')
+
+  // Signal to space layout when a right panel is open.
+  useEffect(() => {
+    setRightPanelOpen(showComments || showVersions)
+    return () => setRightPanelOpen(false)
+  }, [showComments, showVersions, setRightPanelOpen])
 
   const { data: space } = useQuery({
     queryKey: ['space', spaceId],
@@ -90,7 +123,7 @@ function DocumentPage() {
   return (
     <div className="flex h-full">
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-4xl px-8 py-6">
+        <div className="max-w-[860px] px-8 py-6">
           {/* Breadcrumb */}
           <div className="mb-4 flex items-center gap-1 text-sm text-muted-foreground">
             <Link
@@ -111,6 +144,7 @@ function DocumentPage() {
                 {doc.title}
               </h1>
               <div className="flex items-center gap-2">
+                {collabEnabled && <PresenceAvatars provider={collabProvider} />}
                 <button
                   onClick={() => setEditing(!editing)}
                   className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm transition-colors hover:bg-muted"
@@ -192,17 +226,28 @@ function DocumentPage() {
           </div>
 
           {/* Editor / Viewer */}
-          <BookOwlEditor
-            content={doc.content}
-            editable={editing}
-            onSave={handleSave}
-          />
+          {editing ? (
+            <BookOwlEditor
+              key={docId}
+              content={doc.content}
+              editable={editing}
+              onSave={collabEnabled ? undefined : handleSave}
+              collabProvider={collabEnabled ? collabProvider : undefined}
+              ydoc={collabEnabled ? ydoc : undefined}
+              userName={userName}
+              userColor={userColor}
+            />
+          ) : (
+            <div className="rounded-lg border border-border bg-card px-6 py-4">
+              <ContentRenderer content={doc.content} />
+            </div>
+          )}
         </div>
       </div>
 
       {/* Comment panel */}
       {showComments && (
-        <div className="w-80 shrink-0">
+        <div className="h-full w-80 shrink-0 overflow-hidden">
           <CommentPanel
             documentId={docId}
             onClose={() => setShowComments(false)}
@@ -212,7 +257,7 @@ function DocumentPage() {
 
       {/* Version history panel */}
       {showVersions && (
-        <div className="w-80 shrink-0">
+        <div className="h-full w-80 shrink-0 overflow-hidden">
           <VersionHistory
             documentId={docId}
             currentVersion={doc.version}

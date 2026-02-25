@@ -1,0 +1,68 @@
+{{- if .Values.collab.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "bookowl.fullname" . }}-collab
+  labels:
+    {{- include "bookowl.labels" . | nindent 4 }}
+    app.kubernetes.io/component: collab
+spec:
+  replicas: {{ .Values.collab.replicas }}
+  selector:
+    matchLabels:
+      {{- include "bookowl.collabSelectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "bookowl.collabSelectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "bookowl.serviceAccountName" . }}
+      containers:
+        - name: collab
+          image: {{ include "bookowl.collabImage" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: ws
+              containerPort: {{ .Values.collab.port }}
+              protocol: TCP
+          env:
+            - name: PORT
+              value: {{ .Values.collab.port | quote }}
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "bookowl.fullname" . }}
+                  key: BOOKOWL_DB_URL
+            - name: REDIS_HOST
+              value: {{ .Values.redis.host | default "" | quote }}
+            - name: REDIS_PORT
+              value: {{ .Values.redis.port | default "6379" | quote }}
+            {{- if .Values.redis.password }}
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "bookowl.fullname" . }}
+                  key: REDIS_PASSWORD
+            {{- end }}
+            - name: BOOKOWL_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "bookowl.fullname" . }}
+                  key: BOOKOWL_SECRET_KEY
+          livenessProbe:
+            tcpSocket:
+              port: ws
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            tcpSocket:
+              port: ws
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.collab.resources | nindent 12 }}
+{{- end }}

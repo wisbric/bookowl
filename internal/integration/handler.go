@@ -21,11 +21,12 @@ import (
 
 // Handler serves /api/v1/integration/ endpoints called by NightOwl.
 type Handler struct {
-	docSvc *document.Service
+	docSvc    *document.Service
+	publicURL string // optional frontend base URL for integration links
 }
 
-func NewHandler(docSvc *document.Service) *Handler {
-	return &Handler{docSvc: docSvc}
+func NewHandler(docSvc *document.Service, publicURL string) *Handler {
+	return &Handler{docSvc: docSvc, publicURL: strings.TrimRight(publicURL, "/")}
 }
 
 func (h *Handler) Routes() chi.Router {
@@ -131,7 +132,7 @@ func (h *Handler) ListRunbooks(w http.ResponseWriter, r *http.Request) {
 				Title:     row.Title,
 				Slug:      row.Slug,
 				Tags:      row.Tags,
-				URL:       buildDocURL(r, row.SpaceSlug, row.Slug),
+				URL:       h.buildDocURL(r, row.SpaceID, row.ID),
 				UpdatedAt: row.UpdatedAt,
 			}
 		}
@@ -168,7 +169,7 @@ func (h *Handler) ListRunbooks(w http.ResponseWriter, r *http.Request) {
 			Title:     row.Title,
 			Slug:      row.Slug,
 			Tags:      row.Tags,
-			URL:       buildDocURL(r, row.SpaceSlug, row.Slug),
+			URL:       h.buildDocURL(r, row.SpaceID, row.ID),
 			UpdatedAt: row.UpdatedAt,
 		}
 	}
@@ -205,7 +206,7 @@ func (h *Handler) GetRunbook(w http.ResponseWriter, r *http.Request) {
 		Slug:        row.Slug,
 		ContentText: row.ContentText,
 		ContentHTML: renderHTML(row.Content),
-		URL:         buildDocURL(r, row.SpaceSlug, row.Slug),
+		URL:         h.buildDocURL(r, row.SpaceID, row.ID),
 		Tags:        row.Tags,
 		UpdatedAt:   row.UpdatedAt,
 	})
@@ -275,7 +276,7 @@ func (h *Handler) CreatePostMortem(w http.ResponseWriter, r *http.Request) {
 
 	httpserver.Respond(w, http.StatusCreated, PostMortemResponse{
 		ID:    doc.ID,
-		URL:   buildDocURL(r, req.SpaceSlug, docSlug),
+		URL:   h.buildDocURL(r, sp.ID, doc.ID),
 		Title: doc.Title,
 	})
 }
@@ -307,7 +308,7 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 			ID:      row.ID,
 			Title:   row.Title,
 			Excerpt: string(row.Excerpt),
-			URL:     buildDocURL(r, row.SpaceSlug, row.Slug),
+			URL:     h.buildDocURL(r, row.SpaceID, row.ID),
 			Score:   row.Rank,
 		}
 	}
@@ -316,7 +317,10 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 
 // --- Helpers ---
 
-func buildDocURL(r *http.Request, spaceSlug, docSlug string) string {
+func (h *Handler) buildDocURL(r *http.Request, spaceID uuid.UUID, docID uuid.UUID) string {
+	if h.publicURL != "" {
+		return fmt.Sprintf("%s/spaces/%s/docs/%s", h.publicURL, spaceID, docID)
+	}
 	scheme := "https"
 	if r.TLS == nil {
 		scheme = "http"
@@ -328,7 +332,7 @@ func buildDocURL(r *http.Request, spaceSlug, docSlug string) string {
 	if fwd := r.Header.Get("X-Forwarded-Host"); fwd != "" {
 		host = fwd
 	}
-	return fmt.Sprintf("%s://%s/spaces/%s/docs/%s", scheme, host, spaceSlug, docSlug)
+	return fmt.Sprintf("%s://%s/spaces/%s/docs/%s", scheme, host, spaceID, docID)
 }
 
 func spaceName(slug string) string {

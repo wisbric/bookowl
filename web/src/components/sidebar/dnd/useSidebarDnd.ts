@@ -113,7 +113,7 @@ export function useSidebarDnd(spaceId: string) {
       autoExpandTimer.current = null
     }
 
-    if (!over || active.id === over.id) return
+    if (!over) return
 
     const dragged = active.data.current as DragItem
     const target = over.data.current as DropTarget

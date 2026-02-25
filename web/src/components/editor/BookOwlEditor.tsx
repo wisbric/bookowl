@@ -9,8 +9,10 @@ import TableRow from '@tiptap/extension-table-row'
 import TableCell from '@tiptap/extension-table-cell'
 import TableHeader from '@tiptap/extension-table-header'
 import Placeholder from '@tiptap/extension-placeholder'
+import Collaboration from '@tiptap/extension-collaboration'
+import CollaborationCursor from '@tiptap/extension-collaboration-cursor'
 import { common, createLowlight } from 'lowlight'
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useMemo } from 'react'
 import { CalloutBlock } from './extensions/CalloutBlock'
 import { LiveContextBlock } from './extensions/LiveContextBlock'
 import { DiagramBlock } from './extensions/DiagramBlock'
@@ -18,6 +20,8 @@ import { SlashCommandExtension } from './extensions/SlashCommandExtension'
 import { EditorToolbar } from './EditorToolbar'
 import { api } from '@/api/client'
 import type { ImageUploadResponse } from '@/api/client'
+import type { HocuspocusProvider } from '@hocuspocus/provider'
+import type { Doc as YDoc } from 'yjs'
 
 const lowlight = createLowlight(common)
 
@@ -25,6 +29,11 @@ interface BookOwlEditorProps {
   content: Record<string, unknown>
   editable: boolean
   onSave?: (content: Record<string, unknown>) => void
+  // Collab props — when provided, collab mode is active.
+  collabProvider?: HocuspocusProvider | null
+  ydoc?: YDoc
+  userName?: string
+  userColor?: string
 }
 
 async function uploadImageFile(file: File): Promise<string | null> {
@@ -36,8 +45,17 @@ async function uploadImageFile(file: File): Promise<string | null> {
   }
 }
 
-export function BookOwlEditor({ content, editable, onSave }: BookOwlEditorProps) {
+export function BookOwlEditor({
+  content,
+  editable,
+  onSave,
+  collabProvider,
+  ydoc,
+  userName,
+  userColor,
+}: BookOwlEditorProps) {
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const isCollab = !!collabProvider && !!ydoc
 
   const debouncedSave = useCallback(
     (json: Record<string, unknown>) => {
@@ -49,10 +67,13 @@ export function BookOwlEditor({ content, editable, onSave }: BookOwlEditorProps)
     [onSave],
   )
 
-  const editor = useEditor({
-    extensions: [
+  // Build extensions list based on collab mode.
+  const extensions = useMemo(() => {
+    const exts = [
       StarterKit.configure({
-        codeBlock: false, // Replaced by CodeBlockLowlight
+        codeBlock: false,
+        // Disable history when collab is active — Yjs handles undo/redo.
+        history: isCollab ? false : undefined,
       }),
       TaskList,
       TaskItem.configure({ nested: false }),
@@ -69,14 +90,38 @@ export function BookOwlEditor({ content, editable, onSave }: BookOwlEditorProps)
       LiveContextBlock,
       DiagramBlock,
       SlashCommandExtension,
-    ],
-    content,
+    ]
+
+    if (isCollab) {
+      exts.push(
+        Collaboration.configure({ document: ydoc }),
+        CollaborationCursor.configure({
+          provider: collabProvider,
+          user: {
+            name: userName || 'Anonymous',
+            color: userColor || '#6B7280',
+          },
+        }),
+      )
+    }
+
+    return exts
+  }, [isCollab, ydoc, collabProvider, userName, userColor])
+
+  const editor = useEditor({
+    extensions,
+    // When collab is active, Yjs owns the content — don't set initial content.
+    content: isCollab ? undefined : content,
     editable,
-    onUpdate: ({ editor }) => {
-      if (editable) {
-        debouncedSave(editor.getJSON())
-      }
-    },
+    immediatelyRender: true,
+    // Only auto-save when NOT in collab mode — Hocuspocus handles persistence.
+    onUpdate: isCollab
+      ? undefined
+      : ({ editor }) => {
+          if (editable) {
+            debouncedSave(editor.getJSON())
+          }
+        },
     editorProps: {
       attributes: {
         class: 'tiptap prose prose-invert max-w-none focus:outline-none min-h-[300px]',

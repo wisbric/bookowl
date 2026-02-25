@@ -75,7 +75,7 @@ SELECT count(*) FROM documents
 WHERE space_id = $1 AND status != 'archived';
 
 -- name: ListRunbooksWithSpace :many
-SELECT d.id, d.title, d.slug, d.tags, d.updated_at,
+SELECT d.id, d.space_id, d.title, d.slug, d.tags, d.updated_at,
        s.slug AS space_slug
 FROM documents d
 JOIN spaces s ON s.id = d.space_id
@@ -84,7 +84,7 @@ ORDER BY d.updated_at DESC
 LIMIT $1 OFFSET $2;
 
 -- name: GetRunbookWithSpace :one
-SELECT d.id, d.title, d.slug, d.content, d.content_text, d.tags, d.updated_at,
+SELECT d.id, d.space_id, d.title, d.slug, d.content, d.content_text, d.tags, d.updated_at,
        s.slug AS space_slug
 FROM documents d
 JOIN spaces s ON s.id = d.space_id
@@ -105,7 +105,7 @@ WHERE id = $2;
 
 -- name: SearchRunbooks :many
 SELECT
-    d.id, d.title, d.slug, d.tags, d.updated_at,
+    d.id, d.space_id, d.title, d.slug, d.tags, d.updated_at,
     s.slug AS space_slug,
     ts_rank(d.search_vector, plainto_tsquery('english', @query::text)) AS rank,
     ts_headline('english', d.content_text, plainto_tsquery('english', @query::text),

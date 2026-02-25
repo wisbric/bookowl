@@ -19,7 +19,7 @@ export function SidebarTree({ spaceId, tree }: SidebarTreeProps) {
   const dnd = useSidebarDnd(spaceId)
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor),
   )
 
@@ -50,7 +50,7 @@ export function SidebarTree({ spaceId, tree }: SidebarTreeProps) {
               key={node.collection_id}
               spaceId={spaceId}
               node={node}
-              isOverTarget={dnd.overId === `collection:${node.collection_id}`}
+              isOverTarget={dnd.overId === `drop:${node.collection_id}`}
               isValidTarget={dnd.activeItem !== null && dnd.isValidDrop({ kind: 'collection', id: node.collection_id, spaceId })}
               isDragging={dnd.activeItem?.kind === 'collection' && dnd.activeItem.id === node.collection_id}
               activeDragItem={dnd.activeItem}
@@ -103,44 +103,40 @@ function DraggableDocument({
     spaceId,
   }
 
-  const { attributes, listeners, setNodeRef, transform } = useDraggable({
-    id: `doc:${doc.id}`,
+  const { attributes, listeners, setNodeRef } = useDraggable({
+    id: `drag:doc:${doc.id}`,
     data: dragData,
   })
 
   const typeColor = getDocTypeColor(doc.doc_type)
 
-  const style = transform
-    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
-    : undefined
-
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      {...listeners}
+      {...attributes}
       className={`group flex items-center rounded-md text-sm text-sidebar-foreground transition-colors hover:bg-muted ${
         isDragging ? 'opacity-30' : ''
       }`}
     >
-      <span
-        {...listeners}
-        {...attributes}
-        className="flex shrink-0 cursor-grab items-center px-0.5 text-muted-foreground opacity-0 group-hover:opacity-60"
-        aria-label="Drag to reorder"
-      >
+      <span className="flex shrink-0 cursor-grab items-center px-0.5 text-muted-foreground opacity-0 group-hover:opacity-60">
         <GripVertical className="h-3 w-3" />
       </span>
       <Link
         to="/spaces/$spaceId/docs/$docId"
         params={{ spaceId, docId: doc.id }}
-        className="flex flex-1 items-center gap-1.5 rounded-md px-1 py-1 transition-colors [&.active]:bg-muted [&.active]:text-accent"
+        className="flex min-w-0 flex-1 items-start gap-1.5 rounded-md px-1 py-1 transition-colors [&.active]:bg-muted [&.active]:text-accent"
+        onClick={(e) => {
+          // Prevent navigation if a drag just ended (pointer moved > threshold).
+          if (isDragging) e.preventDefault()
+        }}
       >
         <span
-          className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+          className="mt-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full"
           style={{ backgroundColor: typeColor }}
         />
-        <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-        <span className="truncate">{doc.title}</span>
+        <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        <span className="break-words">{doc.title}</span>
       </Link>
     </div>
   )
@@ -170,10 +166,11 @@ function DroppableCollection({
 
   const isExpanded = expanded || autoExpanded
 
+  // Separate IDs for droppable and draggable — @dnd-kit requires unique IDs per registry.
   const dropData: DropTarget = { kind: 'collection', id: node.collection_id, spaceId }
 
   const { setNodeRef: setDropRef, isOver } = useDroppable({
-    id: `collection:${node.collection_id}`,
+    id: `drop:${node.collection_id}`,
     data: dropData,
   })
 
@@ -186,8 +183,8 @@ function DroppableCollection({
     spaceId,
   }
 
-  const { attributes, listeners, setNodeRef: setDragRef, transform } = useDraggable({
-    id: `collection:${node.collection_id}`,
+  const { attributes, listeners, setNodeRef: setDragRef } = useDraggable({
+    id: `drag:collection:${node.collection_id}`,
     data: dragData,
   })
 
@@ -195,43 +192,32 @@ function DroppableCollection({
   const showInvalid = isActiveOver && !isValidTarget && activeDragItem !== null
   const showValid = isActiveOver && isValidTarget
 
-  const style = transform
-    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
-    : undefined
-
-  // Combine drag + drop refs.
-  function setRefs(el: HTMLElement | null) {
-    setDropRef(el)
-    setDragRef(el)
-  }
-
   return (
     <>
       <div
-        ref={setRefs}
-        style={style}
+        ref={setDropRef}
         className={`rounded-md transition-colors ${isDragging ? 'opacity-30' : ''} ${
           showValid ? 'bg-accent/10 ring-1 ring-accent/40' : ''
         } ${showInvalid ? 'bg-destructive/10 ring-1 ring-destructive/40' : ''}`}
       >
-        <div className="group flex w-full items-center rounded-md px-1 py-1 text-sm text-sidebar-foreground transition-colors hover:bg-muted">
-          <span
-            {...listeners}
-            {...attributes}
-            className="flex shrink-0 cursor-grab items-center px-0.5 text-muted-foreground opacity-0 group-hover:opacity-60"
-            aria-label="Drag to reorder"
-          >
+        <div
+          ref={setDragRef}
+          {...listeners}
+          {...attributes}
+          className="group flex w-full items-center rounded-md px-1 py-1 text-sm text-sidebar-foreground transition-colors hover:bg-muted"
+        >
+          <span className="flex shrink-0 cursor-grab items-center px-0.5 text-muted-foreground opacity-0 group-hover:opacity-60">
             <GripVertical className="h-3 w-3" />
           </span>
           <button
             onClick={() => setExpanded(!expanded)}
-            className="flex flex-1 items-center gap-1.5"
+            className="flex min-w-0 flex-1 items-start gap-1.5"
           >
             <ChevronRight
-              className={`h-3.5 w-3.5 shrink-0 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+              className={`mt-0.5 h-3.5 w-3.5 shrink-0 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
             />
-            <FolderOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-            <span className="truncate">{node.collection_name}</span>
+            <FolderOpen className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <span className="break-words">{node.collection_name}</span>
           </button>
           <button
             onClick={() => setShowCreateDoc(true)}

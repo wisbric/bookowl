@@ -5,6 +5,7 @@ import { RouterProvider } from '@tanstack/react-router'
 import { router } from './router'
 import { AuthProvider } from './auth/auth-provider'
 import { fetchAuthConfig } from './auth/auth-config'
+import { fetchClientConfig } from './config/client-config'
 import { createUserManager } from './auth/oidc-manager'
 import './index.css'
 
@@ -18,7 +19,7 @@ const queryClient = new QueryClient({
 })
 
 async function bootstrap() {
-  const config = await fetchAuthConfig()
+  const [config] = await Promise.all([fetchAuthConfig(), fetchClientConfig()])
   const userManager = createUserManager(config)
 
   // Handle OIDC callback before rendering the app.

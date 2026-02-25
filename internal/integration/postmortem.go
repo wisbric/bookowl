@@ -174,7 +174,7 @@ func renderNode(b *strings.Builder, n tiptapNode) {
 			alt = htmlEscape(a)
 		}
 		fmt.Fprintf(b, `<img src="%s" alt="%s">`, src, alt)
-	case "callout":
+	case "calloutBlock":
 		calloutType := "info"
 		if t, ok := n.Attrs["type"].(string); ok {
 			calloutType = htmlEscape(t)

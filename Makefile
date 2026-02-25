@@ -1,4 +1,4 @@
-.PHONY: build run test lint fmt clean sqlc seed seed-demo docker docker-web migrate-runbooks
+.PHONY: build run test lint fmt clean sqlc seed seed-demo docker docker-web docker-collab migrate-runbooks
 
 build:
 	go build -o bin/bookowl ./cmd/bookowl
@@ -40,6 +40,9 @@ docker:
 
 docker-web:
 	docker build -t bookowl-web:dev ./web
+
+docker-collab:
+	docker build -t bookowl-collab:dev ./collab
 
 migrate-runbooks:
 	BOOKOWL_MODE=migrate-nightowl-runbooks \

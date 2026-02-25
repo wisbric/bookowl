@@ -5,7 +5,11 @@ import { formatDistanceToNow } from 'date-fns'
 import { api } from '@/api/client'
 import type { Notification, NotificationCount } from '@/api/client'
 
-export function NotificationBell() {
+interface NotificationBellProps {
+  collapsed?: boolean
+}
+
+export function NotificationBell({ collapsed }: NotificationBellProps) {
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -95,7 +99,11 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-80 rounded-lg border border-border bg-card shadow-lg">
+        <div className={`absolute z-50 w-80 rounded-lg border border-border bg-card shadow-lg ${
+          collapsed
+            ? 'bottom-0 left-full ml-2'
+            : 'left-0 top-full mt-2'
+        }`}>
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <span className="text-sm font-semibold text-foreground">Notifications</span>
             {unreadCount > 0 && (

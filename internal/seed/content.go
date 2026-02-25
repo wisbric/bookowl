@@ -156,3 +156,247 @@ const liveContextDocContent = `{"type":"doc","content":[
   {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Active Alerts"}]},
   {"type":"liveContextBlock","attrs":{"subtype":"alerts","rosterId":null,"serviceName":null,"alertId":null,"label":"All Active Alerts"}}
 ]}`
+
+// --- Additional runbooks ---
+
+const dnsResolutionContent = `{"type":"doc","content":[
+  {"type":"heading","attrs":{"level":1},"content":[{"type":"text","text":"DNS Resolution Failures"}]},
+  {"type":"calloutBlock","attrs":{"type":"danger"},"content":[{"type":"paragraph","content":[{"type":"text","text":"Services are experiencing DNS resolution failures. This can cascade to all service-to-service communication."}]}]},
+  {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Symptoms"}]},
+  {"type":"bulletList","content":[
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Services logging 'dial tcp: lookup <host>: no such host' errors"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Intermittent timeouts on HTTP requests between services"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"CoreDNS pods showing high CPU or memory usage"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"nslookup / dig commands failing from within pods"}]}]}
+  ]},
+  {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Investigation Steps"}]},
+  {"type":"taskList","content":[
+    {"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Check CoreDNS pod status: kubectl get pods -n kube-system -l k8s-app=kube-dns"}]}]},
+    {"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Check CoreDNS logs for errors: kubectl logs -n kube-system -l k8s-app=kube-dns --tail=100"}]}]},
+    {"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Test DNS from a debug pod: kubectl run -it --rm dns-test --image=busybox -- nslookup kubernetes.default"}]}]},
+    {"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Check CoreDNS ConfigMap for misconfigurations: kubectl get configmap coredns -n kube-system -o yaml"}]}]},
+    {"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Verify the kube-dns Service has endpoints: kubectl get endpoints kube-dns -n kube-system"}]}]},
+    {"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Check ndots configuration in affected pod: cat /etc/resolv.conf inside the pod"}]}]}
+  ]},
+  {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Common Fixes"}]},
+  {"type":"orderedList","content":[
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Restart CoreDNS pods if they are in a bad state: kubectl rollout restart deployment/coredns -n kube-system"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Scale up CoreDNS if CPU is saturated: kubectl scale deployment/coredns -n kube-system --replicas=4"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Reduce search domains by setting ndots:2 in pod specs to avoid excessive DNS queries"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Enable DNS caching in applications (e.g., NodeJS: set dns.lookup with { hints: dns.ADDRCONFIG })"}]}]}
+  ]},
+  {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Prevention"}]},
+  {"type":"paragraph","content":[{"type":"text","text":"Set up monitoring for CoreDNS latency and error rates. Create alerts when p99 latency exceeds 200ms or when the SERVFAIL rate exceeds 1%. Consider running NodeLocal DNSCache for large clusters."}]},
+  {"type":"codeBlock","attrs":{"language":"yaml"},"content":[{"type":"text","text":"# NodeLocal DNSCache DaemonSet (excerpt)\napiVersion: apps/v1\nkind: DaemonSet\nmetadata:\n  name: node-local-dns\n  namespace: kube-system\nspec:\n  template:\n    spec:\n      containers:\n      - name: node-cache\n        image: registry.k8s.io/dns/k8s-dns-node-cache:1.22.28"}]}
+]}`
+
+const highCPUContent = `{"type":"doc","content":[
+  {"type":"heading","attrs":{"level":1},"content":[{"type":"text","text":"High CPU Usage Troubleshooting"}]},
+  {"type":"calloutBlock","attrs":{"type":"warning"},"content":[{"type":"paragraph","content":[{"type":"text","text":"A service is consuming excessive CPU. This may cause throttling, increased latency, and degraded performance."}]}]},
+  {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Symptoms"}]},
+  {"type":"bulletList","content":[
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Container CPU usage consistently above 80% of its limit"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Increased request latency (p99 above SLO threshold)"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"CPU throttling visible in container metrics (nr_throttled > 0)"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"HPA scaling events (if configured) triggering frequently"}]}]}
+  ]},
+  {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Investigation Steps"}]},
+  {"type":"taskList","content":[
+    {"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Check current CPU usage: kubectl top pods -n <namespace> --sort-by=cpu"}]}]},
+    {"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Check CPU limits and requests: kubectl get pod <pod> -o jsonpath='{.spec.containers[0].resources}'"}]}]},
+    {"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Check for CPU throttling in Grafana: container_cpu_cfs_throttled_seconds_total"}]}]},
+    {"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Check if a recent deployment caused the spike: kubectl rollout history deployment/<name>"}]}]},
+    {"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Profile the application if the issue persists (Go: pprof, Java: JFR, Node: clinic)"}]}]}
+  ]},
+  {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Immediate Actions"}]},
+  {"type":"orderedList","content":[
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"If traffic spike: check if HPA is configured and increase maxReplicas if needed"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"If code regression: roll back to previous version: kubectl rollout undo deployment/<name>"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"If sustained: increase CPU limits temporarily while investigating root cause"}]}]}
+  ]},
+  {"type":"codeBlock","attrs":{"language":"bash"},"content":[{"type":"text","text":"# Quick check: top CPU consumers across all namespaces\nkubectl top pods -A --sort-by=cpu | head -20\n\n# Check throttling for a specific pod\nkubectl exec <pod> -- cat /sys/fs/cgroup/cpu/cpu.stat"}]}
+]}`
+
+const ingressTroubleshootContent = `{"type":"doc","content":[
+  {"type":"heading","attrs":{"level":1},"content":[{"type":"text","text":"Ingress Troubleshooting Guide"}]},
+  {"type":"paragraph","content":[{"type":"text","text":"This runbook covers common ingress issues including 502/503/504 errors, SSL termination failures, and routing misconfigurations."}]},
+  {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"502 Bad Gateway"}]},
+  {"type":"calloutBlock","attrs":{"type":"warning"},"content":[{"type":"paragraph","content":[{"type":"text","text":"502 means the ingress controller received an invalid response from the upstream (backend) service."}]}]},
+  {"type":"taskList","content":[
+    {"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Check if backend pods are running: kubectl get pods -n <namespace> -l app=<service>"}]}]},
+    {"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Check backend service endpoints: kubectl get endpoints <service> -n <namespace>"}]}]},
+    {"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Check ingress controller logs: kubectl logs -n ingress-nginx -l app.kubernetes.io/name=ingress-nginx"}]}]},
+    {"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Test direct connectivity to the backend pod: kubectl port-forward pod/<pod> 8080:8080"}]}]}
+  ]},
+  {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"503 Service Unavailable"}]},
+  {"type":"calloutBlock","attrs":{"type":"danger"},"content":[{"type":"paragraph","content":[{"type":"text","text":"503 means no backend endpoints are available to serve the request."}]}]},
+  {"type":"bulletList","content":[
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"All backend pods may be down or failing readiness probes"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"The Service selector may not match any pods (check labels)"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"During a deployment rollout, old pods may be terminated before new ones are ready"}]}]}
+  ]},
+  {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"504 Gateway Timeout"}]},
+  {"type":"paragraph","content":[{"type":"text","text":"The backend did not respond within the configured timeout. Check application performance and increase timeout annotations if needed:"}]},
+  {"type":"codeBlock","attrs":{"language":"yaml"},"content":[{"type":"text","text":"apiVersion: networking.k8s.io/v1\nkind: Ingress\nmetadata:\n  annotations:\n    nginx.ingress.kubernetes.io/proxy-read-timeout: \"120\"\n    nginx.ingress.kubernetes.io/proxy-send-timeout: \"120\"\n    nginx.ingress.kubernetes.io/proxy-connect-timeout: \"10\""}]},
+  {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"SSL/TLS Issues"}]},
+  {"type":"taskList","content":[
+    {"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Check certificate status: kubectl get certificate -A"}]}]},
+    {"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Verify TLS secret exists and has correct data: kubectl get secret <tls-secret> -n <ns> -o yaml"}]}]},
+    {"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Check for certificate/key mismatch in ingress controller logs"}]}]},
+    {"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Test externally: curl -vI https://<domain> to check the presented certificate"}]}]}
+  ]}
+]}`
+
+// --- Architecture & engineering docs ---
+
+const adrKubernetesContent = `{"type":"doc","content":[
+  {"type":"heading","attrs":{"level":1},"content":[{"type":"text","text":"ADR-001: Kubernetes as Container Orchestration Platform"}]},
+  {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Status"}]},
+  {"type":"paragraph","content":[{"type":"text","marks":[{"type":"bold"}],"text":"Accepted"},{"type":"text","text":" — 2025-06-15"}]},
+  {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Context"}]},
+  {"type":"paragraph","content":[{"type":"text","text":"We need a container orchestration platform that supports multi-tenant workloads, auto-scaling, rolling deployments, and integration with our existing monitoring stack (Prometheus, Grafana). Our team has experience with both Docker Swarm and Kubernetes."}]},
+  {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Decision"}]},
+  {"type":"paragraph","content":[{"type":"text","text":"We will use Kubernetes (managed via CNCF-certified distributions) for all production workloads. Specifically:"}]},
+  {"type":"bulletList","content":[
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Production: Managed Kubernetes (EKS/GKE) for reduced operational overhead"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Development: k3s on local machines for fast iteration"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"GitOps: Argo CD for declarative cluster management"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Packaging: Helm charts for all services"}]}]}
+  ]},
+  {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Consequences"}]},
+  {"type":"bulletList","content":[
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Positive: Industry-standard ecosystem with extensive tooling and community support"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Positive: Native support for auto-scaling, rolling updates, and self-healing"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Negative: Higher learning curve than simpler orchestrators"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Negative: Requires dedicated platform engineering effort for cluster management"}]}]}
+  ]}
+]}`
+
+const onboardingGuideContent = `{"type":"doc","content":[
+  {"type":"heading","attrs":{"level":1},"content":[{"type":"text","text":"On-Call Engineer Onboarding Guide"}]},
+  {"type":"paragraph","content":[{"type":"text","text":"Welcome to the on-call team! This guide covers everything you need to get started with on-call duties at Acme Corp."}]},
+  {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Before Your First Shift"}]},
+  {"type":"taskList","content":[
+    {"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Get access to NightOwl (alert management) and BookOwl (runbooks)"}]}]},
+    {"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Join the #ops-alerts Slack channel and configure mobile notifications"}]}]},
+    {"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Install kubectl and configure access to all production clusters"}]}]},
+    {"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Verify VPN access to the internal monitoring dashboards"}]}]},
+    {"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Bookmark Grafana dashboards: SLA Overview, Cluster Health, Service Latency"}]}]},
+    {"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Read through all runbooks in the On-Call Runbooks space"}]}]},
+    {"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Shadow an experienced engineer for at least one shift"}]}]}
+  ]},
+  {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"During Your Shift"}]},
+  {"type":"calloutBlock","attrs":{"type":"info"},"content":[{"type":"paragraph","content":[{"type":"text","text":"Your primary goal is to restore service, not to find the root cause. Escalate early rather than spending hours debugging alone."}]}]},
+  {"type":"orderedList","content":[
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"When an alert fires, acknowledge it within 5 minutes in NightOwl"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Check if a runbook exists for this alert type — follow it step by step"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"If no runbook exists, check the Knowledge Base for similar past incidents"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Post updates in #ops-alerts every 15 minutes during active incidents"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"If unresolved after 15 minutes, escalate to the next tier (your manager will be notified automatically)"}]}]}
+  ]},
+  {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"After Your Shift"}]},
+  {"type":"bulletList","content":[
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Hand off any open incidents to the next on-call engineer via the roster handoff in NightOwl"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"For any incident that lasted > 30 minutes, create a post-mortem document"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"If you encountered a scenario not covered by existing runbooks, write a new one"}]}]}
+  ]},
+  {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Escalation Path"}]},
+  {"type":"paragraph","content":[{"type":"text","text":"The escalation policy is configured in NightOwl and follows three tiers:"}]},
+  {"type":"bulletList","content":[
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","marks":[{"type":"bold"}],"text":"Tier 1 (0-5 min):"},{"type":"text","text":" On-call engineer — Slack + SMS notification"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","marks":[{"type":"bold"}],"text":"Tier 2 (5-15 min):"},{"type":"text","text":" On-call + engineering manager — Slack + SMS + phone call"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","marks":[{"type":"bold"}],"text":"Tier 3 (15-30 min):"},{"type":"text","text":" VP Engineering — phone call"}]}]}
+  ]}
+]}`
+
+const deploymentSOPContent = `{"type":"doc","content":[
+  {"type":"heading","attrs":{"level":1},"content":[{"type":"text","text":"Production Deployment Procedure"}]},
+  {"type":"calloutBlock","attrs":{"type":"info"},"content":[{"type":"paragraph","content":[{"type":"text","text":"Standard operating procedure for deploying services to production. All deployments must follow this checklist."}]}]},
+  {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Pre-Deployment Checklist"}]},
+  {"type":"taskList","content":[
+    {"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"All CI checks pass (unit tests, integration tests, lint, security scan)"}]}]},
+    {"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"PR approved by at least 2 reviewers"}]}]},
+    {"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Database migrations tested in staging (if any)"}]}]},
+    {"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Feature flags configured for gradual rollout (if applicable)"}]}]},
+    {"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Rollback plan documented and tested"}]}]},
+    {"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"No active incidents on affected services"}]}]},
+    {"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Deploy within change window (Tuesday-Thursday, 09:00-15:00 UTC)"}]}]}
+  ]},
+  {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Deployment Steps"}]},
+  {"type":"orderedList","content":[
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Announce deployment in #ops-deploys: service name, version, and expected impact"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Tag the release in Git and push the tag to trigger the CI/CD pipeline"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Argo CD will detect the new image tag and begin rolling update"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Monitor the rollout: kubectl rollout status deployment/<name> -n <namespace>"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Watch error rates and latency in Grafana for 10 minutes after rollout completes"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"If metrics are healthy, announce deployment complete in #ops-deploys"}]}]}
+  ]},
+  {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Rollback Procedure"}]},
+  {"type":"calloutBlock","attrs":{"type":"danger"},"content":[{"type":"paragraph","content":[{"type":"text","text":"If error rates increase by more than 2x or latency exceeds SLO, roll back immediately."}]}]},
+  {"type":"codeBlock","attrs":{"language":"bash"},"content":[{"type":"text","text":"# Option 1: Argo CD rollback\nargocd app rollback <app-name>\n\n# Option 2: kubectl rollback\nkubectl rollout undo deployment/<name> -n <namespace>\n\n# Verify rollback\nkubectl rollout status deployment/<name> -n <namespace>"}]},
+  {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Post-Deployment"}]},
+  {"type":"bulletList","content":[
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Update the deployment log spreadsheet with version, deployer, and timestamp"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"If a rollback occurred, create an incident and schedule a post-mortem"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Close the deployment thread in #ops-deploys"}]}]}
+  ]}
+]}`
+
+const secretsRotationContent = `{"type":"doc","content":[
+  {"type":"heading","attrs":{"level":1},"content":[{"type":"text","text":"Secrets and Credential Rotation"}]},
+  {"type":"paragraph","content":[{"type":"text","text":"This runbook covers the process for rotating secrets, API keys, database passwords, and TLS certificates across our infrastructure."}]},
+  {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Database Passwords"}]},
+  {"type":"calloutBlock","attrs":{"type":"warning"},"content":[{"type":"paragraph","content":[{"type":"text","text":"Database password rotation requires a maintenance window. Both the old and new passwords must work simultaneously during the transition."}]}]},
+  {"type":"orderedList","content":[
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Create the new password in the secret manager (AWS Secrets Manager / Vault)"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Add the new password as an additional valid credential in PostgreSQL: ALTER ROLE <role> PASSWORD '<new>'"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Update the Kubernetes secret with the new password"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Rolling restart all pods that use this credential"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Verify all pods are connecting successfully with the new password"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Remove the old password from PostgreSQL"}]}]}
+  ]},
+  {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"API Keys (NightOwl / BookOwl)"}]},
+  {"type":"orderedList","content":[
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Generate a new API key in the admin panel of the service"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Update the consuming service's environment variables or Kubernetes secret"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Restart the consuming service pods"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Verify integration is working (check integration status page)"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Revoke the old API key from the admin panel"}]}]}
+  ]},
+  {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Image Pull Secrets (GHCR)"}]},
+  {"type":"codeBlock","attrs":{"language":"bash"},"content":[{"type":"text","text":"# Generate new token in GitHub > Settings > Developer Settings > PAT\n# Then update the Kubernetes secret:\nkubectl create secret docker-registry ghcr-pull \\\n  --docker-server=ghcr.io \\\n  --docker-username=<github-user> \\\n  --docker-password=<new-pat> \\\n  -n <namespace> \\\n  --dry-run=client -o yaml | kubectl apply -f -\n\n# Verify: try pulling an image manually\nkubectl run pull-test --image=ghcr.io/acme/test:latest --restart=Never\nkubectl delete pod pull-test"}]},
+  {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Rotation Schedule"}]},
+  {"type":"bulletList","content":[
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","marks":[{"type":"bold"}],"text":"Database passwords:"},{"type":"text","text":" Every 90 days"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","marks":[{"type":"bold"}],"text":"API keys:"},{"type":"text","text":" Every 180 days or after personnel changes"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","marks":[{"type":"bold"}],"text":"Image pull tokens:"},{"type":"text","text":" Every 90 days (set GitHub PAT expiry to match)"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","marks":[{"type":"bold"}],"text":"TLS certificates:"},{"type":"text","text":" Automated via cert-manager (90-day Let's Encrypt certs, renewed at 60 days)"}]}]}
+  ]}
+]}`
+
+const monitoringGuideContent = `{"type":"doc","content":[
+  {"type":"heading","attrs":{"level":1},"content":[{"type":"text","text":"Monitoring and Alerting Standards"}]},
+  {"type":"paragraph","content":[{"type":"text","text":"This document defines our monitoring standards, alert thresholds, and dashboard conventions. All services must implement these standards before going to production."}]},
+  {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Required Metrics (RED Method)"}]},
+  {"type":"paragraph","content":[{"type":"text","text":"Every service must expose these three metric types via a /metrics Prometheus endpoint:"}]},
+  {"type":"bulletList","content":[
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","marks":[{"type":"bold"}],"text":"Rate:"},{"type":"text","text":" Request throughput (requests per second)"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","marks":[{"type":"bold"}],"text":"Errors:"},{"type":"text","text":" Error rate as a percentage of total requests (5xx responses)"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","marks":[{"type":"bold"}],"text":"Duration:"},{"type":"text","text":" Request latency histograms (p50, p95, p99)"}]}]}
+  ]},
+  {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Alert Severity Levels"}]},
+  {"type":"bulletList","content":[
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","marks":[{"type":"bold"}],"text":"Critical:"},{"type":"text","text":" Customer-facing impact, pages on-call immediately. Examples: service down, data loss risk, security breach."}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","marks":[{"type":"bold"}],"text":"Warning:"},{"type":"text","text":" Degraded performance or approaching limits. Will become critical if not addressed. Examples: disk > 80%, high latency, certificate expiring."}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","marks":[{"type":"bold"}],"text":"Info:"},{"type":"text","text":" Informational, no action required. Sent to Slack only. Examples: deployment completed, autoscaling event."}]}]}
+  ]},
+  {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Standard Alert Rules"}]},
+  {"type":"codeBlock","attrs":{"language":"yaml"},"content":[{"type":"text","text":"# Example: PrometheusRule for a Go HTTP service\napiVersion: monitoring.coreos.com/v1\nkind: PrometheusRule\nmetadata:\n  name: my-service-alerts\nspec:\n  groups:\n  - name: my-service\n    rules:\n    - alert: HighErrorRate\n      expr: |\n        sum(rate(http_requests_total{status=~\"5..\",service=\"my-service\"}[5m]))\n        / sum(rate(http_requests_total{service=\"my-service\"}[5m])) > 0.02\n      for: 5m\n      labels:\n        severity: critical\n      annotations:\n        summary: \"Error rate > 2% for my-service\"\n    - alert: HighLatency\n      expr: |\n        histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{service=\"my-service\"}[5m])) > 2\n      for: 10m\n      labels:\n        severity: warning\n      annotations:\n        summary: \"p99 latency > 2s for my-service\""}]},
+  {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Dashboard Conventions"}]},
+  {"type":"orderedList","content":[
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Every service dashboard starts with the RED metrics (rate, errors, duration) in the top row"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Use consistent time ranges: default 6h, with quick selectors for 1h, 24h, 7d"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Include a resource usage row: CPU, memory, network I/O, disk (if stateful)"}]}]},
+    {"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Tag all dashboards with the service name and team for discoverability"}]}]}
+  ]}
+]}`

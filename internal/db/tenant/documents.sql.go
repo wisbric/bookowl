@@ -253,7 +253,7 @@ func (q *Queries) GetRunbookByID(ctx context.Context, id uuid.UUID) (GetRunbookB
 }
 
 const getRunbookWithSpace = `-- name: GetRunbookWithSpace :one
-SELECT d.id, d.title, d.slug, d.content, d.content_text, d.tags, d.updated_at,
+SELECT d.id, d.space_id, d.title, d.slug, d.content, d.content_text, d.tags, d.updated_at,
        s.slug AS space_slug
 FROM documents d
 JOIN spaces s ON s.id = d.space_id
@@ -262,6 +262,7 @@ WHERE d.id = $1 AND d.doc_type = 'runbook'
 
 type GetRunbookWithSpaceRow struct {
 	ID          uuid.UUID       `json:"id"`
+	SpaceID     uuid.UUID       `json:"space_id"`
 	Title       string          `json:"title"`
 	Slug        string          `json:"slug"`
 	Content     json.RawMessage `json:"content"`
@@ -276,6 +277,7 @@ func (q *Queries) GetRunbookWithSpace(ctx context.Context, id uuid.UUID) (GetRun
 	var i GetRunbookWithSpaceRow
 	err := row.Scan(
 		&i.ID,
+		&i.SpaceID,
 		&i.Title,
 		&i.Slug,
 		&i.Content,
@@ -556,7 +558,7 @@ func (q *Queries) ListRunbooks(ctx context.Context, arg ListRunbooksParams) ([]L
 }
 
 const listRunbooksWithSpace = `-- name: ListRunbooksWithSpace :many
-SELECT d.id, d.title, d.slug, d.tags, d.updated_at,
+SELECT d.id, d.space_id, d.title, d.slug, d.tags, d.updated_at,
        s.slug AS space_slug
 FROM documents d
 JOIN spaces s ON s.id = d.space_id
@@ -572,6 +574,7 @@ type ListRunbooksWithSpaceParams struct {
 
 type ListRunbooksWithSpaceRow struct {
 	ID        uuid.UUID `json:"id"`
+	SpaceID   uuid.UUID `json:"space_id"`
 	Title     string    `json:"title"`
 	Slug      string    `json:"slug"`
 	Tags      []string  `json:"tags"`
@@ -590,6 +593,7 @@ func (q *Queries) ListRunbooksWithSpace(ctx context.Context, arg ListRunbooksWit
 		var i ListRunbooksWithSpaceRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.SpaceID,
 			&i.Title,
 			&i.Slug,
 			&i.Tags,
@@ -624,7 +628,7 @@ func (q *Queries) MoveDocumentToCollection(ctx context.Context, arg MoveDocument
 
 const searchRunbooks = `-- name: SearchRunbooks :many
 SELECT
-    d.id, d.title, d.slug, d.tags, d.updated_at,
+    d.id, d.space_id, d.title, d.slug, d.tags, d.updated_at,
     s.slug AS space_slug,
     ts_rank(d.search_vector, plainto_tsquery('english', $1::text)) AS rank,
     ts_headline('english', d.content_text, plainto_tsquery('english', $1::text),
@@ -646,6 +650,7 @@ type SearchRunbooksParams struct {
 
 type SearchRunbooksRow struct {
 	ID        uuid.UUID `json:"id"`
+	SpaceID   uuid.UUID `json:"space_id"`
 	Title     string    `json:"title"`
 	Slug      string    `json:"slug"`
 	Tags      []string  `json:"tags"`
@@ -666,6 +671,7 @@ func (q *Queries) SearchRunbooks(ctx context.Context, arg SearchRunbooksParams) 
 		var i SearchRunbooksRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.SpaceID,
 			&i.Title,
 			&i.Slug,
 			&i.Tags,

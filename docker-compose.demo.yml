@@ -51,6 +51,24 @@ services:
       - api
     restart: "no"
 
+  collab:
+    image: bookowl-collab:dev
+    build:
+      context: ./collab
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgres://bookowl:bookowl@postgres:5432/bookowl?sslmode=disable
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      PORT: "1234"
+    ports:
+      - "1234:1234"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   web:
     image: bookowl-web:dev
     build:

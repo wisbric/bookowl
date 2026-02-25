@@ -29,7 +29,7 @@ function SearchPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-8 py-8">
+    <div className="max-w-[860px] px-8 py-8">
       <form onSubmit={handleSubmit} className="mb-8">
         <div className="relative">
           <SearchIcon className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />

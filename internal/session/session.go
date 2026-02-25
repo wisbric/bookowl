@@ -97,6 +97,30 @@ func (m *Manager) ShouldRefresh(claims *Claims) bool {
 	return time.Until(claims.ExpiresAt.Time) < RefreshWindow
 }
 
+// MintShortLived creates a short-lived JWT token string (not set as cookie).
+// Used for collab WebSocket authentication where the HttpOnly session cookie is not accessible to JS.
+func (m *Manager) MintShortLived(tenantSlug, userID, role, authMethod string, ttl time.Duration) (string, error) {
+	now := time.Now()
+	claims := Claims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   userID,
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
+			ID:        uuid.New().String(),
+		},
+		Tenant:     tenantSlug,
+		Role:       role,
+		AuthMethod: authMethod,
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	signed, err := token.SignedString(m.secretKey)
+	if err != nil {
+		return "", fmt.Errorf("signing short-lived JWT: %w", err)
+	}
+	return signed, nil
+}
+
 // Clear removes the session cookie.
 func Clear(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{

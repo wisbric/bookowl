@@ -22,46 +22,48 @@ function HomePage() {
   const hasSpaces = !!firstSpaceId
 
   return (
-    <div className="mx-auto max-w-3xl px-8 py-12">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Welcome to BookOwl</h1>
-        <p className="mt-2 text-muted-foreground">
-          Where your operational knowledge lives.
-        </p>
+    <div className="flex min-h-full flex-col items-center px-8 py-12">
+      <div className="w-full max-w-xl">
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl font-bold tracking-tight">Welcome to BookOwl</h1>
+          <p className="mt-2 text-muted-foreground">
+            Where your operational knowledge lives.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <QuickAction
+            icon={<BookOpen className="h-5 w-5" />}
+            title="Browse Spaces"
+            description="Explore your documentation spaces"
+            to={hasSpaces ? `/spaces/${firstSpaceId}` : undefined}
+            disabled={!hasSpaces}
+            disabledReason="No spaces yet — create one first"
+          />
+          <QuickAction
+            icon={<Search className="h-5 w-5" />}
+            title="Search Docs"
+            description="Find documents across all spaces"
+            to="/search"
+          />
+          <QuickAction
+            icon={<FileText className="h-5 w-5" />}
+            title="New Document"
+            description="Create a new document or runbook"
+            onClick={hasSpaces ? () => setShowCreateDoc(true) : undefined}
+            disabled={!hasSpaces}
+            disabledReason="No spaces yet — create one first"
+          />
+          <QuickAction
+            icon={<Clock className="h-5 w-5" />}
+            title="Recent Changes"
+            description="View recently updated documents"
+            to="/recent"
+          />
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <QuickAction
-          icon={<BookOpen className="h-5 w-5" />}
-          title="Browse Spaces"
-          description="Explore your documentation spaces"
-          to={hasSpaces ? `/spaces/${firstSpaceId}` : undefined}
-          disabled={!hasSpaces}
-          disabledReason="No spaces yet — create one first"
-        />
-        <QuickAction
-          icon={<Search className="h-5 w-5" />}
-          title="Search Docs"
-          description="Find documents across all spaces"
-          to="/search"
-        />
-        <QuickAction
-          icon={<FileText className="h-5 w-5" />}
-          title="New Document"
-          description="Create a new document or runbook"
-          onClick={hasSpaces ? () => setShowCreateDoc(true) : undefined}
-          disabled={!hasSpaces}
-          disabledReason="No spaces yet — create one first"
-        />
-        <QuickAction
-          icon={<Clock className="h-5 w-5" />}
-          title="Recent Changes"
-          description="View recently updated documents"
-          to="/recent"
-        />
-      </div>
-
-      <footer className="mt-16 text-center text-sm text-muted-foreground">
+      <footer className="mt-auto pt-16 text-center text-sm text-muted-foreground">
         BookOwl v0.1.0 — A Wisbric product · Part of the NightOwl platform
       </footer>
 

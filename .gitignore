@@ -16,6 +16,13 @@ web/dist/
 web/tsconfig.app.tsbuildinfo
 web/tsconfig.node.tsbuildinfo
 
+# Collab
+collab/node_modules/
+collab/dist/
+
+# Binaries
+bookowl
+
 # OS
 *.Zone.Identifier
 .DS_Store
