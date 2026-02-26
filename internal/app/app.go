@@ -185,14 +185,14 @@ func (a *App) setupRouter() {
 		r.Post("/auth/change-password", localAdminH.HandleChangePassword)
 		r.Get("/auth/config", localAdminH.HandleAuthConfig)
 
-		loginH := auth.NewLoginHandler(a.sessionMgr, a.authStore, slog.Default(), a.cfg.OIDCIssuerURL != "")
+		loginH := auth.NewLoginHandler(a.sessionMgr, a.authStore, slog.Default(), a.cfg.OIDCIssuerURL != "", rateLimiter)
 		r.Post("/auth/login", loginH.HandleLogin)
 		r.Get("/auth/me", loginH.HandleMe)
 		r.Post("/auth/logout", loginH.HandleLogout)
 	}
 
 	// Auth + tenant middleware.
-	authMW := auth.Middleware(a.sessionMgr, nil, nil, a.authStore, slog.Default())
+	authMW := auth.Middleware(a.sessionMgr, nil, nil, a.authStore, slog.Default(), a.cfg.DevMode)
 	tenantMW := tenant.NewResolveMiddleware(a.plat.DB, a.plat.DB)
 
 	// Domain services.
@@ -386,7 +386,15 @@ func (a *App) Run() error {
 	// Start weekly orphan cleanup.
 	go a.runOrphanCleanup()
 
-	return http.ListenAndServe(addr, a.router)
+	httpSrv := &http.Server{
+		Addr:         addr,
+		Handler:      a.router,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	return httpSrv.ListenAndServe()
 }
 
 func (a *App) Close() {
