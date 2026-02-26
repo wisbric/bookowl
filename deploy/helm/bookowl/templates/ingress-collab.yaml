@@ -7,7 +7,9 @@ metadata:
     {{- include "bookowl.labels" . | nindent 4 }}
     app.kubernetes.io/component: collab
   annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-http-version: "1.1"

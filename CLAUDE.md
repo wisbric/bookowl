@@ -52,7 +52,7 @@ The product is called **BookOwl**. It uses the NightOwl design system from the p
 - **Database:** PostgreSQL 16+ via jackc/pgx/v5 + sqlc
 - **Migrations:** golang-migrate (SQL files in `migrations/`)
 - **Cache:** Redis 7 via redis/go-redis/v9
-- **Auth:** OIDC (coreos/go-oidc/v3) + API keys (SHA-256) — same provider as NightOwl
+- **Auth:** Cookie sessions (`wisbric_session`) + OIDC (coreos/go-oidc/v3) + API keys (SHA-256) — auth logic lives in shared `core/pkg/auth`
 - **Full-text search:** PostgreSQL tsvector (same pattern as NightOwl incidents)
 - **Metrics:** prometheus/client_golang (namespace: `bookowl`)
 - **Tracing:** OpenTelemetry (OTLP gRPC)
@@ -97,11 +97,22 @@ These mirror NightOwl exactly. If in doubt, look at how NightOwl does it.
 
 ## Multi-Tenancy
 
-Schema-per-tenant isolation, identical to NightOwl. Every request resolves a tenant from JWT or API key. The middleware acquires a pooled connection and sets `search_path` before any query.
+Schema-per-tenant isolation, identical to NightOwl. Every request resolves a tenant from session cookie, JWT, or API key. The middleware acquires a pooled connection and sets `search_path` before any query.
 
 BookOwl tenants correspond 1:1 with NightOwl tenants — they share the same tenant slug. When NightOwl calls BookOwl it passes the tenant context via API key scoped to that tenant.
 
 Never reference tenant data without going through the tenant middleware.
+
+## Authentication
+
+Auth is handled by the shared `core/pkg/auth` package (same as NightOwl/TicketOwl). Middleware precedence: Cookie → PAT → Session JWT (Bearer) → OIDC JWT (Bearer) → API Key → Dev header.
+
+- **Cookie sessions:** `wisbric_session` HttpOnly cookie set on login, with silent refresh
+- **Local admin:** Break-glass login at `POST /auth/local`, forced password change on first login
+- **OIDC:** Via Keycloak, with group-to-role mapping in `internal/authadapter/groups.go`
+- **API keys:** `X-API-Key` header for NightOwl service account and other integrations
+- **Storage adapter:** `internal/authadapter/adapter.go` implements `core/pkg/auth.Storage`
+- **Note:** BookOwl's `local_admins` table uses `tenant_slug` (text) instead of `tenant_id` (uuid), so the adapter overrides `FindLocalAdmin` with a JOIN query
 
 ## Development
 

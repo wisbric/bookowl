@@ -31,7 +31,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   // Attach auth: Bearer token (OIDC), session cookie (automatic), or dev fallback.
   if (_sessionMode) {
-    // Cookie-based auth — browser sends bw_session cookie automatically.
+    // Cookie-based auth — browser sends wisbric_session cookie automatically.
   } else if (_tokenProvider) {
     const token = await _tokenProvider()
     if (token) {
@@ -86,7 +86,7 @@ async function upload<T>(path: string, file: File): Promise<T> {
 
   // Attach auth: Bearer token (OIDC), session cookie (automatic), or dev fallback.
   if (_sessionMode) {
-    // Cookie-based auth — browser sends bw_session cookie automatically.
+    // Cookie-based auth — browser sends wisbric_session cookie automatically.
   } else if (_tokenProvider) {
     const token = await _tokenProvider()
     if (token) {

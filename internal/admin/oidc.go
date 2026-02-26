@@ -15,7 +15,7 @@ import (
 	"time"
 
 	dbglobal "github.com/wisbric/bookowl/internal/db/global"
-	"github.com/wisbric/bookowl/internal/httpserver"
+	"github.com/wisbric/core/pkg/httpserver"
 	"github.com/wisbric/bookowl/pkg/tenant"
 )
 
@@ -201,7 +201,7 @@ func saveOIDCConfig(existing json.RawMessage, oidcCfg OIDCConfig) (json.RawMessa
 func (h *Handler) GetOIDCConfig(w http.ResponseWriter, r *http.Request) {
 	t, ok := tenant.FromContext(r.Context())
 	if !ok {
-		httpserver.RespondError(w, http.StatusInternalServerError, "tenant not resolved")
+httpserver.RespondError(w, http.StatusInternalServerError, "error", "tenant not resolved")
 		return
 	}
 
@@ -223,14 +223,14 @@ func (h *Handler) GetOIDCConfig(w http.ResponseWriter, r *http.Request) {
 // UpdateOIDCConfig handles PUT /admin/config/oidc.
 func (h *Handler) UpdateOIDCConfig(w http.ResponseWriter, r *http.Request) {
 	var req OIDCConfigUpdateRequest
-	if err := httpserver.DecodeJSON(r, &req); err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+	if !httpserver.DecodeAndValidate(w, r, &req) {
+
 		return
 	}
 
 	t, ok := tenant.FromContext(r.Context())
 	if !ok {
-		httpserver.RespondError(w, http.StatusInternalServerError, "tenant not resolved")
+httpserver.RespondError(w, http.StatusInternalServerError, "error", "tenant not resolved")
 		return
 	}
 
@@ -240,13 +240,13 @@ func (h *Handler) UpdateOIDCConfig(w http.ResponseWriter, r *http.Request) {
 	clientSecret := existing.ClientSecret
 	if req.ClientSecret != "" {
 		if h.secretKey == "" {
-			httpserver.RespondError(w, http.StatusInternalServerError, "BOOKOWL_SECRET_KEY not configured")
+httpserver.RespondError(w, http.StatusInternalServerError, "error", "BOOKOWL_SECRET_KEY not configured")
 			return
 		}
 		encrypted, err := encryptSecret(req.ClientSecret, h.secretKey)
 		if err != nil {
 			slog.Error("encrypting client secret", "error", err)
-			httpserver.RespondError(w, http.StatusInternalServerError, "failed to encrypt client secret")
+httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to encrypt client secret")
 			return
 		}
 		clientSecret = encrypted
@@ -266,7 +266,7 @@ func (h *Handler) UpdateOIDCConfig(w http.ResponseWriter, r *http.Request) {
 
 	configJSON, err := saveOIDCConfig(t.Config, newCfg)
 	if err != nil {
-		httpserver.RespondError(w, http.StatusInternalServerError, "failed to serialize config")
+httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to serialize config")
 		return
 	}
 
@@ -277,7 +277,7 @@ func (h *Handler) UpdateOIDCConfig(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		slog.Error("updating OIDC config", "tenant", t.Slug, "error", err)
-		httpserver.RespondError(w, http.StatusInternalServerError, "failed to update config")
+httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to update config")
 		return
 	}
 
@@ -305,8 +305,8 @@ func (h *Handler) UpdateOIDCConfig(w http.ResponseWriter, r *http.Request) {
 // TestOIDCConfig handles POST /admin/config/oidc/test.
 func (h *Handler) TestOIDCConfig(w http.ResponseWriter, r *http.Request) {
 	var req OIDCTestRequest
-	if err := httpserver.DecodeJSON(r, &req); err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+	if !httpserver.DecodeAndValidate(w, r, &req) {
+
 		return
 	}
 
@@ -320,7 +320,7 @@ func (h *Handler) TestOIDCConfig(w http.ResponseWriter, r *http.Request) {
 
 	t, ok := tenant.FromContext(r.Context())
 	if !ok {
-		httpserver.RespondError(w, http.StatusInternalServerError, "tenant not resolved")
+httpserver.RespondError(w, http.StatusInternalServerError, "error", "tenant not resolved")
 		return
 	}
 

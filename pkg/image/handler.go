@@ -14,7 +14,7 @@ import (
 
 	"github.com/wisbric/bookowl/internal/db"
 	dbtenant "github.com/wisbric/bookowl/internal/db/tenant"
-	"github.com/wisbric/bookowl/internal/httpserver"
+	"github.com/wisbric/core/pkg/httpserver"
 	"github.com/wisbric/bookowl/pkg/storage"
 	"github.com/wisbric/bookowl/pkg/tenant"
 )
@@ -57,16 +57,16 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	file, header, err := r.FormFile("file")
 	if err != nil {
 		if err.Error() == "http: request body too large" {
-			httpserver.RespondError(w, http.StatusRequestEntityTooLarge, "image exceeds 10MB limit")
+httpserver.RespondError(w, http.StatusRequestEntityTooLarge, "error", "image exceeds 10MB limit")
 			return
 		}
-		httpserver.RespondError(w, http.StatusBadRequest, "missing or invalid file field")
+httpserver.RespondError(w, http.StatusBadRequest, "error", "missing or invalid file field")
 		return
 	}
 	defer func() { _ = file.Close() }()
 
 	if header.Size > maxImageSize {
-		httpserver.RespondError(w, http.StatusRequestEntityTooLarge, "image exceeds 10MB limit")
+httpserver.RespondError(w, http.StatusRequestEntityTooLarge, "error", "image exceeds 10MB limit")
 		return
 	}
 
@@ -74,7 +74,7 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	buf := make([]byte, 512)
 	n, err := file.Read(buf)
 	if err != nil && err != io.EOF {
-		httpserver.RespondError(w, http.StatusBadRequest, "cannot read file")
+httpserver.RespondError(w, http.StatusBadRequest, "error", "cannot read file")
 		return
 	}
 	detectedType := http.DetectContentType(buf[:n])
@@ -86,20 +86,20 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 
 	ext, ok := allowedContentTypes[detectedType]
 	if !ok {
-		httpserver.RespondError(w, http.StatusUnsupportedMediaType, fmt.Sprintf("unsupported content type: %s", detectedType))
+httpserver.RespondError(w, http.StatusUnsupportedMediaType, "error", fmt.Sprintf("unsupported content type: %s", detectedType))
 		return
 	}
 
 	// Seek back to the start to include the sniffed bytes.
 	if _, err := file.Seek(0, io.SeekStart); err != nil {
-		httpserver.RespondError(w, http.StatusInternalServerError, "cannot rewind file")
+httpserver.RespondError(w, http.StatusInternalServerError, "error", "cannot rewind file")
 		return
 	}
 
 	// Generate storage key.
 	t, ok := tenant.FromContext(r.Context())
 	if !ok {
-		httpserver.RespondError(w, http.StatusInternalServerError, "tenant not resolved")
+httpserver.RespondError(w, http.StatusInternalServerError, "error", "tenant not resolved")
 		return
 	}
 
@@ -109,7 +109,7 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	// Store the file.
 	if err := h.backend.Put(r.Context(), storageKey, file, header.Size, detectedType); err != nil {
 		slog.Error("storing image", "key", storageKey, "error", err)
-		httpserver.RespondError(w, http.StatusInternalServerError, "failed to store image")
+httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to store image")
 		return
 	}
 
@@ -129,7 +129,7 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 		// Best-effort cleanup of the stored file.
 		_ = h.backend.Delete(r.Context(), storageKey)
 		slog.Error("inserting storage object", "key", storageKey, "error", err)
-		httpserver.RespondError(w, http.StatusInternalServerError, "failed to save image record")
+httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to save image record")
 		return
 	}
 
@@ -142,7 +142,7 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Serve(w http.ResponseWriter, r *http.Request) {
 	id, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -150,11 +150,11 @@ func (h *Handler) Serve(w http.ResponseWriter, r *http.Request) {
 	obj, err := q.GetStorageObject(r.Context(), id)
 	if err != nil {
 		if db.IsNotFound(err) {
-			httpserver.RespondError(w, http.StatusNotFound, "image not found")
+httpserver.RespondError(w, http.StatusNotFound, "error", "image not found")
 			return
 		}
 		slog.Error("getting storage object", "id", id, "error", err)
-		httpserver.RespondError(w, http.StatusInternalServerError, "internal error")
+httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
 		return
 	}
 
@@ -165,7 +165,7 @@ func (h *Handler) Serve(w http.ResponseWriter, r *http.Request) {
 			presigned, err := s3b.PresignedURL(r.Context(), obj.StorageKey)
 			if err != nil {
 				slog.Error("presigning S3 URL", "key", obj.StorageKey, "error", err)
-				httpserver.RespondError(w, http.StatusInternalServerError, "failed to generate image URL")
+httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to generate image URL")
 				return
 			}
 			redirectURL = presigned
@@ -180,7 +180,7 @@ func (h *Handler) Serve(w http.ResponseWriter, r *http.Request) {
 	reader, size, err := h.backend.Get(r.Context(), obj.StorageKey)
 	if err != nil {
 		slog.Error("reading image file", "key", obj.StorageKey, "error", err)
-		httpserver.RespondError(w, http.StatusNotFound, "image file not found")
+httpserver.RespondError(w, http.StatusNotFound, "error", "image file not found")
 		return
 	}
 	defer func() { _ = reader.Close() }()
@@ -197,7 +197,7 @@ func (h *Handler) Serve(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	id, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -205,11 +205,11 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	obj, err := q.GetStorageObject(r.Context(), id)
 	if err != nil {
 		if db.IsNotFound(err) {
-			httpserver.RespondError(w, http.StatusNotFound, "image not found")
+httpserver.RespondError(w, http.StatusNotFound, "error", "image not found")
 			return
 		}
 		slog.Error("getting storage object for delete", "id", id, "error", err)
-		httpserver.RespondError(w, http.StatusInternalServerError, "internal error")
+httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
 		return
 	}
 
@@ -221,7 +221,7 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	// Delete the DB record (cascades to document_images).
 	if err := q.DeleteStorageObject(r.Context(), id); err != nil {
 		slog.Error("deleting storage object record", "id", id, "error", err)
-		httpserver.RespondError(w, http.StatusInternalServerError, "failed to delete image record")
+httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to delete image record")
 		return
 	}
 

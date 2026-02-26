@@ -13,11 +13,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/wisbric/bookowl/internal/auth"
+	"github.com/wisbric/core/pkg/auth"
 	"github.com/wisbric/bookowl/internal/db"
 	dbglobal "github.com/wisbric/bookowl/internal/db/global"
 	dbtenant "github.com/wisbric/bookowl/internal/db/tenant"
-	"github.com/wisbric/bookowl/internal/httpserver"
+	"github.com/wisbric/core/pkg/httpserver"
 	"github.com/wisbric/bookowl/pkg/tenant"
 )
 
@@ -53,24 +53,24 @@ type ProfileResponse struct {
 }
 
 func (h *ProfileHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
-	identity, ok := auth.IdentityFromContext(r.Context())
-	if !ok {
-		httpserver.RespondError(w, http.StatusUnauthorized, "not authenticated")
+	identity := auth.FromContext(r.Context())
+	if identity == nil {
+httpserver.RespondError(w, http.StatusUnauthorized, "error", "not authenticated")
 		return
 	}
 
 	conn := tenant.ConnFromContext(r.Context())
 	if conn == nil {
-		httpserver.RespondError(w, http.StatusInternalServerError, "no database connection")
+httpserver.RespondError(w, http.StatusInternalServerError, "error", "no database connection")
 		return
 	}
 	q := dbtenant.New(conn)
 
-	user, err := q.GetUserByExternalID(r.Context(), identity.ExternalID)
+	user, err := q.GetUserByExternalID(r.Context(), identity.Subject)
 	if err != nil {
 		// For local admin or dev mode, return identity-based profile.
 		httpserver.Respond(w, http.StatusOK, ProfileResponse{
-			ID:          identity.ExternalID,
+			ID:          identity.Subject,
 			Email:       identity.Email,
 			DisplayName: identity.Name,
 			Timezone:    "UTC",
@@ -99,14 +99,14 @@ type UpdateProfileRequest struct {
 
 func (h *ProfileHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	var req UpdateProfileRequest
-	if err := httpserver.DecodeJSON(r, &req); err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+	if !httpserver.DecodeAndValidate(w, r, &req) {
+
 		return
 	}
 
 	userID := tenant.UserIDFromContext(r.Context())
 	if !userID.Valid {
-		httpserver.RespondError(w, http.StatusForbidden, "user not resolved")
+httpserver.RespondError(w, http.StatusForbidden, "error", "user not resolved")
 		return
 	}
 
@@ -120,7 +120,7 @@ func (h *ProfileHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		slog.Error("updating profile", "error", err)
-		httpserver.RespondError(w, http.StatusInternalServerError, "failed to update profile")
+httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to update profile")
 		return
 	}
 
@@ -160,7 +160,7 @@ type CreateTokenRequest struct {
 func (h *ProfileHandler) ListTokens(w http.ResponseWriter, r *http.Request) {
 	t, ok := tenant.FromContext(r.Context())
 	if !ok {
-		httpserver.RespondError(w, http.StatusInternalServerError, "tenant not resolved")
+httpserver.RespondError(w, http.StatusInternalServerError, "error", "tenant not resolved")
 		return
 	}
 
@@ -176,7 +176,7 @@ func (h *ProfileHandler) ListTokens(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		slog.Error("listing personal tokens", "error", err)
-		httpserver.RespondError(w, http.StatusInternalServerError, "failed to list tokens")
+httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to list tokens")
 		return
 	}
 
@@ -204,33 +204,33 @@ func (h *ProfileHandler) ListTokens(w http.ResponseWriter, r *http.Request) {
 
 func (h *ProfileHandler) CreateToken(w http.ResponseWriter, r *http.Request) {
 	var req CreateTokenRequest
-	if err := httpserver.DecodeJSON(r, &req); err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+	if !httpserver.DecodeAndValidate(w, r, &req) {
+
 		return
 	}
 
 	if req.Name == "" {
-		httpserver.RespondError(w, http.StatusBadRequest, "token name is required")
+httpserver.RespondError(w, http.StatusBadRequest, "error", "token name is required")
 		return
 	}
 
 	t, ok := tenant.FromContext(r.Context())
 	if !ok {
-		httpserver.RespondError(w, http.StatusInternalServerError, "tenant not resolved")
+httpserver.RespondError(w, http.StatusInternalServerError, "error", "tenant not resolved")
 		return
 	}
 
-	identity, _ := auth.IdentityFromContext(r.Context())
+	identity := auth.FromContext(r.Context())
 	userID := tenant.UserIDFromContext(r.Context())
 	if !userID.Valid {
-		httpserver.RespondError(w, http.StatusForbidden, "user not resolved")
+httpserver.RespondError(w, http.StatusForbidden, "error", "user not resolved")
 		return
 	}
 
 	// Generate random token.
 	rawBytes := make([]byte, 32)
 	if _, err := rand.Read(rawBytes); err != nil {
-		httpserver.RespondError(w, http.StatusInternalServerError, "failed to generate token")
+httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to generate token")
 		return
 	}
 	plaintext := "bwp_" + hex.EncodeToString(rawBytes)
@@ -244,7 +244,7 @@ func (h *ProfileHandler) CreateToken(w http.ResponseWriter, r *http.Request) {
 	if req.ExpiresIn != nil && *req.ExpiresIn != "" {
 		dur, err := parseExpiration(*req.ExpiresIn)
 		if err != nil {
-			httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 			return
 		}
 		expiresAt = pgtype.Timestamptz{Time: time.Now().Add(dur), Valid: true}
@@ -261,7 +261,7 @@ func (h *ProfileHandler) CreateToken(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		slog.Error("creating personal token", "error", err)
-		httpserver.RespondError(w, http.StatusInternalServerError, "failed to create token")
+httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to create token")
 		return
 	}
 
@@ -285,19 +285,19 @@ func (h *ProfileHandler) CreateToken(w http.ResponseWriter, r *http.Request) {
 func (h *ProfileHandler) RevokeToken(w http.ResponseWriter, r *http.Request) {
 	tokenID, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
 	t, ok := tenant.FromContext(r.Context())
 	if !ok {
-		httpserver.RespondError(w, http.StatusInternalServerError, "tenant not resolved")
+httpserver.RespondError(w, http.StatusInternalServerError, "error", "tenant not resolved")
 		return
 	}
 
 	userID := tenant.UserIDFromContext(r.Context())
 	if !userID.Valid {
-		httpserver.RespondError(w, http.StatusForbidden, "user not resolved")
+httpserver.RespondError(w, http.StatusForbidden, "error", "user not resolved")
 		return
 	}
 
@@ -308,11 +308,11 @@ func (h *ProfileHandler) RevokeToken(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		if db.IsNotFound(err) {
-			httpserver.RespondError(w, http.StatusNotFound, "token not found")
+httpserver.RespondError(w, http.StatusNotFound, "error", "token not found")
 			return
 		}
 		slog.Error("revoking personal token", "error", err)
-		httpserver.RespondError(w, http.StatusInternalServerError, "failed to revoke token")
+httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to revoke token")
 		return
 	}
 

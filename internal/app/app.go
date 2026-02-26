@@ -7,22 +7,23 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"encoding/json"
 
 	"github.com/wisbric/bookowl/internal/admin"
-	"github.com/wisbric/bookowl/internal/auth"
-	"github.com/wisbric/bookowl/internal/authhandler"
+	"github.com/wisbric/core/pkg/auth"
+	"github.com/wisbric/bookowl/internal/authadapter"
 	"github.com/wisbric/bookowl/internal/config"
 	dbtenant "github.com/wisbric/bookowl/internal/db/tenant"
-	"github.com/wisbric/bookowl/internal/httpserver"
+	"github.com/wisbric/core/pkg/httpserver"
 	"github.com/wisbric/bookowl/internal/integration"
 	"github.com/wisbric/bookowl/internal/platform"
-	"github.com/wisbric/bookowl/internal/session"
-	"github.com/wisbric/bookowl/internal/version"
+	coretelemetry "github.com/wisbric/core/pkg/telemetry"
+	"github.com/wisbric/core/pkg/version"
 	"github.com/wisbric/bookowl/pkg/collection"
 	"github.com/wisbric/bookowl/pkg/comment"
 	"github.com/wisbric/bookowl/pkg/document"
@@ -40,14 +41,16 @@ type App struct {
 	cfg          config.Config
 	plat         *platform.Platform
 	router       *chi.Mux
-	backend      storage.Backend
-	oidcVerifier *oidc.IDTokenVerifier
-	sess         *session.Manager
+	metricsReg   *prometheus.Registry
+	backend    storage.Backend
+	sessionMgr *auth.SessionManager
+	authStore    auth.Storage
+	startedAt    time.Time
 	stopCh       chan struct{}
 }
 
 func New(ctx context.Context, cfg config.Config) (*App, error) {
-	plat, err := platform.New(ctx, cfg.DBURL, cfg.RedisURL)
+	plat, err := platform.New(ctx, cfg.DatabaseURL, cfg.RedisURL)
 	if err != nil {
 		return nil, fmt.Errorf("initializing platform: %w", err)
 	}
@@ -58,45 +61,42 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		return nil, fmt.Errorf("initializing storage backend: %w", err)
 	}
 
-	var oidcVerifier *oidc.IDTokenVerifier
-	if cfg.OIDCIssuer != "" {
-		provider, err := oidc.NewProvider(ctx, cfg.OIDCIssuer)
-		if err != nil {
-			plat.Close()
-			return nil, fmt.Errorf("initializing OIDC provider: %w", err)
-		}
-		oidcVerifier = provider.Verifier(&oidc.Config{
-			ClientID: cfg.OIDCClientID,
-		})
-		slog.Info("OIDC authentication enabled", "issuer", cfg.OIDCIssuer, "client_id", cfg.OIDCClientID)
-	} else {
-		slog.Info("OIDC authentication disabled (no BOOKOWL_OIDC_ISSUER set)")
-	}
-
-	// Session manager for local admin and OIDC sessions.
-	var sess *session.Manager
+	// Session manager (core's unified cookie-based sessions).
 	secretKey := cfg.SecretKey
 	if secretKey == "" && cfg.DevMode {
-		secretKey = "bookowl-dev-secret-key-do-not-use-in-production"
-		slog.Info("using dev secret key for session management")
+		secretKey = auth.GenerateDevSecret()
+		slog.Info("using auto-generated dev secret for session management")
 	}
+	var sessionMgr *auth.SessionManager
 	if secretKey != "" {
 		sessionTTL, err := time.ParseDuration(cfg.SessionTTL)
 		if err != nil {
 			sessionTTL = 12 * time.Hour
 		}
-		sess = session.NewManager(secretKey, sessionTTL)
+		sessionMgr, err = auth.NewSessionManager(secretKey, sessionTTL)
+		if err != nil {
+			plat.Close()
+			return nil, fmt.Errorf("creating session manager: %w", err)
+		}
 		slog.Info("session management enabled", "ttl", sessionTTL)
 	} else {
 		slog.Info("session management disabled (no BOOKOWL_SECRET_KEY set)")
 	}
 
+	// Auth storage adapter.
+	authStore := authadapter.New(plat.DB)
+
+	// Metrics registry (no BookOwl-specific metrics yet — shared only).
+	metricsReg := coretelemetry.NewMetricsRegistry()
+
 	app := &App{
 		cfg:          cfg,
 		plat:         plat,
-		backend:      backend,
-		oidcVerifier: oidcVerifier,
-		sess:         sess,
+		metricsReg:   metricsReg,
+		backend:    backend,
+		sessionMgr: sessionMgr,
+		authStore:    authStore,
+		startedAt:    time.Now(),
 		stopCh:       make(chan struct{}),
 	}
 	app.setupRouter()
@@ -129,25 +129,39 @@ func (a *App) setupRouter() {
 	r.Use(chimw.Recoverer)
 	r.Use(chimw.Timeout(30 * time.Second))
 
+	// Prometheus metrics (no auth).
+	r.Handle("/metrics", promhttp.HandlerFor(a.metricsReg, promhttp.HandlerOpts{}))
+
 	// Health endpoints (no auth).
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		httpserver.Respond(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 	r.Get("/readyz", func(w http.ResponseWriter, r *http.Request) {
 		if err := a.plat.DB.Ping(r.Context()); err != nil {
-			httpserver.RespondError(w, http.StatusServiceUnavailable, "database unavailable")
+httpserver.RespondError(w, http.StatusServiceUnavailable, "error", "database unavailable")
 			return
 		}
 		httpserver.Respond(w, http.StatusOK, map[string]string{"status": "ready"})
 	})
 
+	// Public status endpoint (no auth required — used by about page).
+	r.Get("/status", func(w http.ResponseWriter, r *http.Request) {
+		uptime := time.Since(a.startedAt)
+		httpserver.Respond(w, http.StatusOK, map[string]any{
+			"status":     "ok",
+			"version":    version.Version,
+			"commit_sha": version.Commit,
+			"uptime":     uptime.Truncate(time.Second).String(),
+		})
+	})
+
 	// Auth config endpoint (no auth required — frontend uses this to decide OIDC vs dev mode).
 	r.Get("/api/v1/auth/config", func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{
-			"oidc_enabled": a.cfg.OIDCIssuer != "",
+			"oidc_enabled": a.cfg.OIDCIssuerURL != "",
 		}
-		if a.cfg.OIDCIssuer != "" {
-			resp["oidc_authority"] = a.cfg.OIDCIssuer
+		if a.cfg.OIDCIssuerURL != "" {
+			resp["oidc_authority"] = a.cfg.OIDCIssuerURL
 			resp["oidc_client_id"] = a.cfg.OIDCClientID
 		}
 		httpserver.Respond(w, http.StatusOK, resp)
@@ -162,12 +176,22 @@ func (a *App) setupRouter() {
 		httpserver.Respond(w, http.StatusOK, resp)
 	})
 
-	// Auth handler (public, no auth required).
-	authH := authhandler.NewHandler(a.plat.DB, a.sess, a.plat.Redis)
-	r.Mount("/auth", authH.Routes())
+	// Auth routes (public, no auth required).
+	if a.sessionMgr != nil {
+		rateLimiter := auth.NewRateLimiter(a.plat.Redis, 10, 15*time.Minute)
+		localAdminH := auth.NewLocalAdminHandler(a.sessionMgr, a.authStore, slog.Default(), rateLimiter)
+		r.Post("/auth/local", localAdminH.HandleLocalLogin)
+		r.Post("/auth/change-password", localAdminH.HandleChangePassword)
+		r.Get("/auth/config", localAdminH.HandleAuthConfig)
+
+		loginH := auth.NewLoginHandler(a.sessionMgr, a.authStore, slog.Default(), a.cfg.OIDCIssuerURL != "")
+		r.Post("/auth/login", loginH.HandleLogin)
+		r.Get("/auth/me", loginH.HandleMe)
+		r.Post("/auth/logout", loginH.HandleLogout)
+	}
 
 	// Auth + tenant middleware.
-	authMW := auth.NewMiddleware(a.plat.DB, a.cfg.DevMode, a.oidcVerifier, a.sess)
+	authMW := auth.Middleware(a.sessionMgr, nil, nil, a.authStore, slog.Default())
 	tenantMW := tenant.NewResolveMiddleware(a.plat.DB, a.plat.DB)
 
 	// Domain services.
@@ -210,7 +234,7 @@ func (a *App) setupRouter() {
 
 	// API v1 routes (require auth + tenant).
 	r.Route("/api/v1", func(r chi.Router) {
-		r.Use(authMW.Authenticate)
+		r.Use(authMW)
 		r.Use(tenantMW.Resolve)
 
 		// System.
@@ -276,28 +300,40 @@ func (a *App) setupRouter() {
 
 		// Collab token — returns a short-lived JWT for WebSocket auth.
 		r.Get("/collab/token", func(w http.ResponseWriter, r *http.Request) {
-			if a.sess == nil {
-				httpserver.RespondError(w, http.StatusServiceUnavailable, "session management not configured")
+			if a.sessionMgr == nil {
+				httpserver.RespondError(w, http.StatusServiceUnavailable, "error", "session management not configured")
 				return
 			}
 
-			// Try to extract the raw JWT from the bw_session cookie.
-			if cookie, err := r.Cookie(session.CookieName); err == nil {
-				if _, err := a.sess.Validate(cookie.Value); err == nil {
+			// Try to extract the raw JWT from the wisbric_session cookie.
+			if cookie, err := r.Cookie(auth.CookieName); err == nil {
+				if _, err := a.sessionMgr.ValidateToken(cookie.Value); err == nil {
 					httpserver.Respond(w, http.StatusOK, map[string]string{"token": cookie.Value})
 					return
 				}
 			}
 
 			// Fallback: mint a short-lived token from the authenticated identity.
-			id, ok := auth.IdentityFromContext(r.Context())
-			if !ok {
-				httpserver.RespondError(w, http.StatusUnauthorized, "authentication required")
+			id := auth.FromContext(r.Context())
+			if id == nil {
+				httpserver.RespondError(w, http.StatusUnauthorized, "error", "authentication required")
 				return
 			}
-			token, err := a.sess.MintShortLived(id.TenantSlug, id.UserID, id.Role, id.Method, 5*time.Minute)
+			userIDStr := ""
+			if id.UserID != nil {
+				userIDStr = id.UserID.String()
+			}
+			token, err := a.sessionMgr.MintShortLived(auth.SessionClaims{
+				Subject:    id.Subject,
+				Email:      id.Email,
+				Role:       id.Role,
+				TenantSlug: id.TenantSlug,
+				TenantID:   id.TenantID.String(),
+				UserID:     userIDStr,
+				Method:     id.Method,
+			}, 5*time.Minute)
 			if err != nil {
-				httpserver.RespondError(w, http.StatusInternalServerError, "failed to mint collab token")
+				httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to mint collab token")
 				return
 			}
 			httpserver.Respond(w, http.StatusOK, map[string]string{"token": token})

@@ -20,6 +20,14 @@ export default defineConfig({
         target: 'http://localhost:8081',
         changeOrigin: true,
       },
+      '/auth': {
+        target: 'http://localhost:8081',
+        changeOrigin: true,
+      },
+      '/status': {
+        target: 'http://localhost:8081',
+        changeOrigin: true,
+      },
     },
   },
   resolve: {

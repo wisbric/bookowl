@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/wisbric/bookowl/internal/httpserver"
+	"github.com/wisbric/core/pkg/httpserver"
 	"github.com/wisbric/bookowl/pkg/tenant"
 )
 
@@ -35,13 +35,13 @@ func (h *Handler) Routes() chi.Router {
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	spaceID, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
 	var req CreateRequest
-	if err := httpserver.DecodeJSON(r, &req); err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+	if !httpserver.DecodeAndValidate(w, r, &req) {
+
 		return
 	}
 
@@ -59,7 +59,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	spaceID, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -75,7 +75,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	id, err := httpserver.URLParamUUID(r, "collectionId")
 	if err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -91,13 +91,13 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	id, err := httpserver.URLParamUUID(r, "collectionId")
 	if err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
 	var req UpdateRequest
-	if err := httpserver.DecodeJSON(r, &req); err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+	if !httpserver.DecodeAndValidate(w, r, &req) {
+
 		return
 	}
 
@@ -113,7 +113,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	id, err := httpserver.URLParamUUID(r, "collectionId")
 	if err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -128,10 +128,10 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 func handleError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, ErrNotFound):
-		httpserver.RespondError(w, http.StatusNotFound, err.Error())
+httpserver.RespondError(w, http.StatusNotFound, "error", err.Error())
 	case errors.Is(err, ErrSlugConflict):
-		httpserver.RespondError(w, http.StatusConflict, err.Error())
+httpserver.RespondError(w, http.StatusConflict, "error", err.Error())
 	default:
-		httpserver.RespondError(w, http.StatusInternalServerError, "internal error")
+httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
 	}
 }

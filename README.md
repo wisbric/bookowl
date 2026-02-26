@@ -14,7 +14,7 @@ BookOwl provides structured documentation — runbooks, post-mortems, SOPs, arch
 - **Templates** — System and user-created templates for runbooks, post-mortems, and other document types
 - **Threaded Comments** — Document-level threaded comments with @mentions, resolve/unresolve, and in-app notifications
 - **Image Storage** — Upload images via drag-and-drop or paste; S3 or local filesystem backends
-- **Authentication** — OIDC (Keycloak) + local admin break-glass access + personal API tokens
+- **Authentication** — Cookie-based sessions (`wisbric_session`), OIDC (Keycloak), local admin break-glass, personal API tokens — auth via shared `core/pkg/auth`
 - **Multi-Tenancy** — Schema-per-tenant isolation, shared OIDC provider with NightOwl
 - **Admin UI** — NightOwl connection settings, OIDC configuration, user management
 
@@ -88,15 +88,13 @@ cmd/bookowl/          # Binary entrypoint (modes: api, seed, seed-demo)
 internal/
   app/                # Application setup and router wiring
   admin/              # Admin API handlers (config, OIDC)
-  auth/               # Authentication middleware (OIDC, API key, session)
-  authhandler/        # Login, logout, password change endpoints
-  config/             # Environment-based configuration
+  authadapter/        # Auth storage adapter (implements core/pkg/auth.Storage) + OIDC group mapping
+  config/             # Environment-based configuration (extends core BaseConfig)
   db/global/          # sqlc queries for global schema (tenants, API keys)
   db/tenant/          # sqlc queries for tenant schema (documents, users, etc.)
   httpserver/         # HTTP helpers (respond, pagination, decode)
   integration/        # NightOwl integration endpoints
   seed/               # Seed data (dev tenant, demo content, templates)
-  session/            # JWT session management
 pkg/
   collection/         # Collection domain (CRUD)
   comment/            # Document comments (threaded, @mentions, resolve)
@@ -110,7 +108,7 @@ pkg/
   tenant/             # Tenant middleware and context
   user/               # User profile and personal tokens
 web/                  # React frontend
-  src/auth/           # Auth provider (OIDC + session)
+  src/auth/           # Auth provider (cookie-based sessions via wisbric_session)
   src/components/     # UI components (editor, sidebar, panels)
   src/routes/         # TanStack Router pages
 migrations/

@@ -9,10 +9,11 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/wisbric/bookowl/internal/auth"
+	"github.com/wisbric/bookowl/internal/authadapter"
+	"github.com/wisbric/core/pkg/auth"
 	dbglobal "github.com/wisbric/bookowl/internal/db/global"
 	dbtenant "github.com/wisbric/bookowl/internal/db/tenant"
-	"github.com/wisbric/bookowl/internal/httpserver"
+	"github.com/wisbric/core/pkg/httpserver"
 )
 
 var validSlug = regexp.MustCompile(`^[a-z][a-z0-9_]{0,62}$`)
@@ -33,29 +34,29 @@ func (m *ResolveMiddleware) Resolve(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		identity, ok := auth.IdentityFromContext(ctx)
-		if !ok {
-			httpserver.RespondError(w, http.StatusUnauthorized, "no identity in context")
+		identity := auth.FromContext(ctx)
+		if identity == nil {
+			httpserver.RespondError(w, http.StatusUnauthorized, "error", "no identity in context")
 			return
 		}
 
 		slug := identity.TenantSlug
 		if !validSlug.MatchString(slug) {
-			httpserver.RespondError(w, http.StatusBadRequest, "invalid tenant slug")
+			httpserver.RespondError(w, http.StatusBadRequest, "error", "invalid tenant slug")
 			return
 		}
 
 		t, err := m.globalQ.GetTenantBySlug(ctx, slug)
 		if err != nil {
 			slog.Error("looking up tenant", "slug", slug, "error", err)
-			httpserver.RespondError(w, http.StatusUnauthorized, "tenant not found")
+			httpserver.RespondError(w, http.StatusUnauthorized, "error", "tenant not found")
 			return
 		}
 
 		conn, err := m.pool.Acquire(ctx)
 		if err != nil {
 			slog.Error("acquiring connection", "error", err)
-			httpserver.RespondError(w, http.StatusServiceUnavailable, "database unavailable")
+			httpserver.RespondError(w, http.StatusServiceUnavailable, "error", "database unavailable")
 			return
 		}
 		defer conn.Release()
@@ -63,7 +64,7 @@ func (m *ResolveMiddleware) Resolve(next http.Handler) http.Handler {
 		schema := fmt.Sprintf("tenant_%s", slug)
 		if _, err := conn.Exec(ctx, fmt.Sprintf("SET search_path TO %s", schema)); err != nil {
 			slog.Error("setting search_path", "schema", schema, "error", err)
-			httpserver.RespondError(w, http.StatusInternalServerError, "tenant setup failed")
+			httpserver.RespondError(w, http.StatusInternalServerError, "error", "tenant setup failed")
 			return
 		}
 
@@ -80,15 +81,15 @@ func (m *ResolveMiddleware) Resolve(next http.Handler) http.Handler {
 		ctx = ContextWithConn(ctx, conn)
 
 		// If OIDC user, resolve or auto-provision user in tenant schema.
-		if identity.ExternalID != "" && identity.Method == "oidc" {
+		if identity.Subject != "" && identity.Method == "oidc" {
 			// Determine role from group mapping if OIDC groups are configured.
 			provisionRole := "editor"
 			if len(identity.Groups) > 0 {
 				groupCfg := loadOIDCGroupConfig(tenant.Config)
 				if groupCfg != nil {
-					mapped := auth.MapGroupsToRole(identity.Groups, *groupCfg)
+					mapped := authadapter.MapGroupsToRole(identity.Groups, *groupCfg)
 					if mapped == "" {
-						httpserver.RespondError(w, http.StatusForbidden, "not in any allowed group")
+						httpserver.RespondError(w, http.StatusForbidden, "error", "not in any allowed group")
 						return
 					}
 					provisionRole = mapped
@@ -96,33 +97,34 @@ func (m *ResolveMiddleware) Resolve(next http.Handler) http.Handler {
 			}
 
 			q := dbtenant.New(conn)
-			user, err := q.GetUserByExternalID(ctx, identity.ExternalID)
+			user, err := q.GetUserByExternalID(ctx, identity.Subject)
 			if err != nil {
 				// User not found — auto-provision via upsert.
-				slog.Info("auto-provisioning OIDC user", "external_id", identity.ExternalID, "email", identity.Email, "role", provisionRole)
+				slog.Info("auto-provisioning OIDC user", "external_id", identity.Subject, "email", identity.Email, "role", provisionRole)
 				user, err = q.UpsertUser(ctx, dbtenant.UpsertUserParams{
-					ExternalID:  identity.ExternalID,
+					ExternalID:  identity.Subject,
 					Email:       identity.Email,
 					DisplayName: identity.Name,
 					Role:        provisionRole,
 				})
 				if err != nil {
 					slog.Error("auto-provisioning user failed", "error", err)
-					httpserver.RespondError(w, http.StatusInternalServerError, "user provisioning failed")
+					httpserver.RespondError(w, http.StatusInternalServerError, "error", "user provisioning failed")
 					return
 				}
 			} else if len(identity.Groups) > 0 {
 				// Existing user: update role from groups if group config is set.
 				groupCfg := loadOIDCGroupConfig(tenant.Config)
 				if groupCfg != nil {
-					mapped := auth.MapGroupsToRole(identity.Groups, *groupCfg)
+					mapped := authadapter.MapGroupsToRole(identity.Groups, *groupCfg)
 					if mapped == "" {
-						httpserver.RespondError(w, http.StatusForbidden, "not in any allowed group")
+						httpserver.RespondError(w, http.StatusForbidden, "error", "not in any allowed group")
 						return
 					}
 					provisionRole = mapped
 				}
 			}
+
 			ctx = ContextWithUserID(ctx, user.ID)
 			// Use group-mapped role if available, otherwise sync from DB.
 			if len(identity.Groups) > 0 {
@@ -130,11 +132,11 @@ func (m *ResolveMiddleware) Resolve(next http.Handler) http.Handler {
 			} else {
 				identity.Role = user.Role
 			}
-			ctx = auth.ContextWithIdentity(ctx, identity)
-		} else if identity.ExternalID != "" {
+			ctx = auth.NewContext(ctx, identity)
+		} else if identity.Subject != "" {
 			// Dev mode: resolve existing user if present.
 			q := dbtenant.New(conn)
-			user, err := q.GetUserByExternalID(ctx, identity.ExternalID)
+			user, err := q.GetUserByExternalID(ctx, identity.Subject)
 			if err == nil {
 				ctx = ContextWithUserID(ctx, user.ID)
 			}
@@ -154,7 +156,7 @@ type oidcSection struct {
 
 // loadOIDCGroupConfig extracts the group mapping config from a tenant's config JSONB.
 // Returns nil if OIDC is not configured or has no group settings.
-func loadOIDCGroupConfig(configJSON json.RawMessage) *auth.OIDCGroupConfig {
+func loadOIDCGroupConfig(configJSON json.RawMessage) *authadapter.OIDCGroupConfig {
 	var full map[string]json.RawMessage
 	if len(configJSON) == 0 {
 		return nil
@@ -177,7 +179,7 @@ func loadOIDCGroupConfig(configJSON json.RawMessage) *auth.OIDCGroupConfig {
 	if len(section.AdminGroups) == 0 && len(section.EditorGroups) == 0 && len(section.AllowedGroups) == 0 {
 		return nil
 	}
-	return &auth.OIDCGroupConfig{
+	return &authadapter.OIDCGroupConfig{
 		AllowedGroups: section.AllowedGroups,
 		AdminGroups:   section.AdminGroups,
 		EditorGroups:  section.EditorGroups,

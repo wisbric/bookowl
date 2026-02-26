@@ -8,8 +8,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
-	"github.com/wisbric/bookowl/internal/auth"
-	"github.com/wisbric/bookowl/internal/httpserver"
+	"github.com/wisbric/core/pkg/auth"
+	"github.com/wisbric/core/pkg/httpserver"
 	"github.com/wisbric/bookowl/pkg/tenant"
 )
 
@@ -40,13 +40,13 @@ func (h *Handler) CommentRoutes() func(chi.Router) {
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	docID, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
 	var req CreateRequest
-	if err := httpserver.DecodeJSON(r, &req); err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+	if !httpserver.DecodeAndValidate(w, r, &req) {
+
 		return
 	}
 
@@ -64,18 +64,18 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Reply(w http.ResponseWriter, r *http.Request) {
 	docID, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 	commentID, err := httpserver.URLParamUUID(r, "commentId")
 	if err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
 	var req CreateRequest
-	if err := httpserver.DecodeJSON(r, &req); err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+	if !httpserver.DecodeAndValidate(w, r, &req) {
+
 		return
 	}
 
@@ -93,13 +93,13 @@ func (h *Handler) Reply(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	commentID, err := httpserver.URLParamUUID(r, "commentId")
 	if err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
 	var req UpdateRequest
-	if err := httpserver.DecodeJSON(r, &req); err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+	if !httpserver.DecodeAndValidate(w, r, &req) {
+
 		return
 	}
 
@@ -118,7 +118,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	commentID, err := httpserver.URLParamUUID(r, "commentId")
 	if err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -136,7 +136,7 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Resolve(w http.ResponseWriter, r *http.Request) {
 	commentID, err := httpserver.URLParamUUID(r, "commentId")
 	if err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -153,7 +153,7 @@ func (h *Handler) Resolve(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Unresolve(w http.ResponseWriter, r *http.Request) {
 	commentID, err := httpserver.URLParamUUID(r, "commentId")
 	if err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -169,7 +169,7 @@ func (h *Handler) Unresolve(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	docID, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -187,7 +187,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Count(w http.ResponseWriter, r *http.Request) {
 	docID, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -209,8 +209,8 @@ func userIDFromContext(r *http.Request) uuid.UUID {
 }
 
 func isAdminRole(r *http.Request) bool {
-	identity, ok := auth.IdentityFromContext(r.Context())
-	if !ok {
+	identity := auth.FromContext(r.Context())
+	if identity == nil {
 		return false
 	}
 	return identity.Role == "admin"
@@ -219,19 +219,19 @@ func isAdminRole(r *http.Request) bool {
 func handleError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, ErrNotFound):
-		httpserver.RespondError(w, http.StatusNotFound, err.Error())
+httpserver.RespondError(w, http.StatusNotFound, "error", err.Error())
 	case errors.Is(err, ErrReplyToReply):
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 	case errors.Is(err, ErrNotTopLevel):
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 	case errors.Is(err, ErrEmptyBody):
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 	case errors.Is(err, ErrEditWindowExpired):
-		httpserver.RespondError(w, http.StatusForbidden, err.Error())
+httpserver.RespondError(w, http.StatusForbidden, "error", err.Error())
 	case errors.Is(err, ErrNotAuthor):
-		httpserver.RespondError(w, http.StatusForbidden, err.Error())
+httpserver.RespondError(w, http.StatusForbidden, "error", err.Error())
 	default:
 		slog.Error("comment handler error", "error", err)
-		httpserver.RespondError(w, http.StatusInternalServerError, "internal error")
+httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
 	}
 }

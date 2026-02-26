@@ -6,6 +6,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
+
+	coreplatform "github.com/wisbric/core/pkg/platform"
 )
 
 type Platform struct {
@@ -14,24 +16,15 @@ type Platform struct {
 }
 
 func New(ctx context.Context, dbURL, redisURL string) (*Platform, error) {
-	pool, err := pgxpool.New(ctx, dbURL)
+	pool, err := coreplatform.NewPostgresPool(ctx, dbURL)
 	if err != nil {
-		return nil, fmt.Errorf("creating pgx pool: %w", err)
-	}
-	if err := pool.Ping(ctx); err != nil {
-		pool.Close()
-		return nil, fmt.Errorf("pinging database: %w", err)
+		return nil, fmt.Errorf("creating postgres pool: %w", err)
 	}
 
-	opts, err := redis.ParseURL(redisURL)
+	rdb, err := coreplatform.NewRedisClient(ctx, redisURL)
 	if err != nil {
 		pool.Close()
-		return nil, fmt.Errorf("parsing Redis URL: %w", err)
-	}
-	rdb := redis.NewClient(opts)
-	if err := rdb.Ping(ctx).Err(); err != nil {
-		pool.Close()
-		return nil, fmt.Errorf("pinging Redis: %w", err)
+		return nil, fmt.Errorf("creating redis client: %w", err)
 	}
 
 	return &Platform{DB: pool, Redis: rdb}, nil

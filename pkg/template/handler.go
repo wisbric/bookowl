@@ -8,7 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
-	"github.com/wisbric/bookowl/internal/httpserver"
+	"github.com/wisbric/core/pkg/httpserver"
 	"github.com/wisbric/bookowl/pkg/tenant"
 )
 
@@ -44,7 +44,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	if s := r.URL.Query().Get("space_id"); s != "" {
 		id, err := uuid.Parse(s)
 		if err != nil {
-			httpserver.RespondError(w, http.StatusBadRequest, "invalid space_id")
+httpserver.RespondError(w, http.StatusBadRequest, "error", "invalid space_id")
 			return
 		}
 		spaceID = &id
@@ -63,7 +63,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	id, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -78,8 +78,8 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	var req CreateRequest
-	if err := httpserver.DecodeJSON(r, &req); err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+	if !httpserver.DecodeAndValidate(w, r, &req) {
+
 		return
 	}
 
@@ -97,13 +97,13 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	id, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
 	var req UpdateRequest
-	if err := httpserver.DecodeJSON(r, &req); err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+	if !httpserver.DecodeAndValidate(w, r, &req) {
+
 		return
 	}
 
@@ -119,7 +119,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	id, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -134,13 +134,13 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) SaveAsTemplate(w http.ResponseWriter, r *http.Request) {
 	docID, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
 	var req SaveAsTemplateRequest
-	if err := httpserver.DecodeJSON(r, &req); err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+	if !httpserver.DecodeAndValidate(w, r, &req) {
+
 		return
 	}
 
@@ -158,11 +158,11 @@ func (h *Handler) SaveAsTemplate(w http.ResponseWriter, r *http.Request) {
 func handleError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, ErrNotFound):
-		httpserver.RespondError(w, http.StatusNotFound, err.Error())
+httpserver.RespondError(w, http.StatusNotFound, "error", err.Error())
 	case errors.Is(err, ErrSystemReadOnly):
-		httpserver.RespondError(w, http.StatusForbidden, err.Error())
+httpserver.RespondError(w, http.StatusForbidden, "error", err.Error())
 	default:
 		slog.Error("template handler error", "error", err)
-		httpserver.RespondError(w, http.StatusInternalServerError, "internal error")
+httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
 	}
 }

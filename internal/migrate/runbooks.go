@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"os"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -42,14 +43,22 @@ func RunRunbookMigration(ctx context.Context, cfg config.Config) error {
 		return fmt.Errorf("BOOKOWL_NIGHTOWL_API_URL and BOOKOWL_NIGHTOWL_API_KEY must be set")
 	}
 
+	tenantSlug := os.Getenv("BOOKOWL_MIGRATE_TENANT_SLUG")
+	targetSpace := os.Getenv("BOOKOWL_MIGRATE_TARGET_SPACE")
+	targetCollection := os.Getenv("BOOKOWL_MIGRATE_TARGET_COLLECTION")
+
+	if tenantSlug == "" || targetSpace == "" {
+		return fmt.Errorf("BOOKOWL_MIGRATE_TENANT_SLUG and BOOKOWL_MIGRATE_TARGET_SPACE must be set")
+	}
+
 	slog.Info("starting NightOwl runbook migration",
 		"nightowl_url", cfg.NightOwlAPIURL,
-		"tenant", cfg.MigrateTenantSlug,
-		"target_space", cfg.MigrateTargetSpace,
-		"target_collection", cfg.MigrateTargetCollection,
+		"tenant", tenantSlug,
+		"target_space", targetSpace,
+		"target_collection", targetCollection,
 	)
 
-	pool, err := pgxpool.New(ctx, cfg.DBURL)
+	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
 	if err != nil {
 		return fmt.Errorf("connecting to database: %w", err)
 	}
@@ -57,9 +66,9 @@ func RunRunbookMigration(ctx context.Context, cfg config.Config) error {
 
 	// Resolve tenant.
 	globalQ := dbglobal.New(pool)
-	t, err := globalQ.GetTenantBySlug(ctx, cfg.MigrateTenantSlug)
+	t, err := globalQ.GetTenantBySlug(ctx, tenantSlug)
 	if err != nil {
-		return fmt.Errorf("tenant %q not found: %w", cfg.MigrateTenantSlug, err)
+		return fmt.Errorf("tenant %q not found: %w", tenantSlug, err)
 	}
 
 	// Set search_path.
@@ -77,31 +86,31 @@ func RunRunbookMigration(ctx context.Context, cfg config.Config) error {
 	q := dbtenant.New(conn)
 
 	// Find or create the target space.
-	sp, err := q.GetSpaceBySlug(ctx, cfg.MigrateTargetSpace)
+	sp, err := q.GetSpaceBySlug(ctx, targetSpace)
 	if err != nil {
 		if !db.IsNotFound(err) {
 			return fmt.Errorf("looking up space: %w", err)
 		}
-		name := strings.ToUpper(cfg.MigrateTargetSpace[:1]) + cfg.MigrateTargetSpace[1:]
+		name := strings.ToUpper(targetSpace[:1]) + targetSpace[1:]
 		sp, err = q.CreateSpace(ctx, dbtenant.CreateSpaceParams{
 			Name:        name,
-			Slug:        cfg.MigrateTargetSpace,
+			Slug:        targetSpace,
 			Description: pgtype.Text{String: "Imported NightOwl runbooks", Valid: true},
 		})
 		if err != nil {
 			return fmt.Errorf("creating space: %w", err)
 		}
-		slog.Info("created space", "slug", cfg.MigrateTargetSpace, "id", sp.ID)
+		slog.Info("created space", "slug", targetSpace, "id", sp.ID)
 	}
 
 	// Find or create the target collection.
 	var collectionID pgtype.UUID
-	if cfg.MigrateTargetCollection != "" {
+	if targetCollection != "" {
 		// Try to find existing — not a direct query, so create if unique violation.
 		col, err := q.CreateCollection(ctx, dbtenant.CreateCollectionParams{
 			SpaceID: sp.ID,
-			Name:    strings.ToUpper(cfg.MigrateTargetCollection[:1]) + cfg.MigrateTargetCollection[1:],
-			Slug:    cfg.MigrateTargetCollection,
+			Name:    strings.ToUpper(targetCollection[:1]) + targetCollection[1:],
+			Slug:    targetCollection,
 		})
 		if err != nil {
 			if !db.IsUniqueViolation(err) {
@@ -109,10 +118,10 @@ func RunRunbookMigration(ctx context.Context, cfg config.Config) error {
 			}
 			// Collection already exists — that's fine, but we don't have a GetCollectionBySlug.
 			// We'll just leave collectionID as null.
-			slog.Info("collection already exists, continuing without assigning", "slug", cfg.MigrateTargetCollection)
+			slog.Info("collection already exists, continuing without assigning", "slug", targetCollection)
 		} else {
 			collectionID = pgtype.UUID{Bytes: col.ID, Valid: true}
-			slog.Info("created collection", "slug", cfg.MigrateTargetCollection, "id", col.ID)
+			slog.Info("created collection", "slug", targetCollection, "id", col.ID)
 		}
 	}
 

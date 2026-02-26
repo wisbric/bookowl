@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { Search, Plus, Settings, ExternalLink, Sun, Moon, LogOut, User, Key, LayoutTemplate, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { Search, Plus, Settings, Info, ExternalLink, Sun, Moon, LogOut, User, Key, LayoutTemplate, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { api } from '@/api/client'
 import type { Space } from '@/api/client'
@@ -53,16 +53,6 @@ export function Sidebar({ onOpenPalette, collapsed, onToggle }: SidebarProps) {
             <img src="/owl.png" alt="BookOwl" className="h-7 brightness-0 dark:brightness-100" />
           </Link>
 
-          {onToggle && (
-            <button
-              onClick={onToggle}
-              className="mb-2 rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              title="Expand sidebar"
-            >
-              <PanelLeftOpen className="h-4 w-4" />
-            </button>
-          )}
-
           <button
             onClick={onOpenPalette}
             className="mb-2 rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
@@ -97,6 +87,15 @@ export function Sidebar({ onOpenPalette, collapsed, onToggle }: SidebarProps) {
 
           <div className="mt-auto flex flex-col items-center gap-1 pt-2">
             <NotificationBell collapsed />
+            {onToggle && (
+              <button
+                onClick={onToggle}
+                className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                title="Expand sidebar"
+              >
+                <PanelLeftOpen className="h-4 w-4" />
+              </button>
+            )}
             <button
               onClick={() => setDarkMode(!darkMode)}
               className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
@@ -130,12 +129,6 @@ export function Sidebar({ onOpenPalette, collapsed, onToggle }: SidebarProps) {
                         className="flex items-center gap-2 px-3 py-1.5 text-sm text-sidebar-foreground transition-colors hover:bg-muted">
                         <Key className="h-4 w-4" /> Personal tokens
                       </Link>
-                      {profile.role === 'admin' && (
-                        <Link to="/admin" onClick={() => setShowUserMenu(false)}
-                          className="flex items-center gap-2 px-3 py-1.5 text-sm text-sidebar-foreground transition-colors hover:bg-muted">
-                          <Settings className="h-4 w-4" /> Admin
-                        </Link>
-                      )}
                     </div>
                     <div className="border-t border-border py-1">
                       <button onClick={() => { setShowUserMenu(false); logout() }}
@@ -147,6 +140,22 @@ export function Sidebar({ onOpenPalette, collapsed, onToggle }: SidebarProps) {
                 )}
               </div>
             )}
+          {profile?.role === 'admin' && (
+            <Link
+              to="/admin"
+              className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground [&.active]:bg-muted [&.active]:text-accent"
+              title="Admin"
+            >
+              <Settings className="h-4 w-4" />
+            </Link>
+          )}
+          <Link
+            to="/about"
+            className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground [&.active]:bg-muted [&.active]:text-accent"
+            title="About"
+          >
+            <Info className="h-4 w-4" />
+          </Link>
           </div>
         </aside>
 
@@ -228,8 +237,8 @@ export function Sidebar({ onOpenPalette, collapsed, onToggle }: SidebarProps) {
         </div>
 
         {/* Collapse toggle */}
-        {onToggle && (
-          <div className="px-3 pb-1">
+        <div className="px-3 pb-1 space-y-0.5">
+          {onToggle && (
             <button
               onClick={onToggle}
               className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
@@ -238,8 +247,8 @@ export function Sidebar({ onOpenPalette, collapsed, onToggle }: SidebarProps) {
               <PanelLeftClose className="h-4 w-4" />
               <span>Collapse</span>
             </button>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Footer with user menu */}
         <div className="border-t border-border px-3 py-3">
@@ -255,7 +264,7 @@ export function Sidebar({ onOpenPalette, collapsed, onToggle }: SidebarProps) {
                     {profile.display_name || profile.email}
                   </div>
                   <div className="truncate text-xs text-muted-foreground">
-                    {profile.role} · {profile.auth_method === 'local' ? 'local admin' : `via ${profile.auth_method.toUpperCase()}`}
+                    {profile.role}
                   </div>
                 </div>
               </button>
@@ -287,16 +296,6 @@ export function Sidebar({ onOpenPalette, collapsed, onToggle }: SidebarProps) {
                       <Key className="h-4 w-4" />
                       Personal tokens
                     </Link>
-                    {profile.role === 'admin' && (
-                      <Link
-                        to="/admin"
-                        onClick={() => setShowUserMenu(false)}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm text-sidebar-foreground transition-colors hover:bg-muted"
-                      >
-                        <Settings className="h-4 w-4" />
-                        Admin
-                      </Link>
-                    )}
                     <button
                       onClick={() => {
                         setDarkMode(!darkMode)
@@ -333,24 +332,26 @@ export function Sidebar({ onOpenPalette, collapsed, onToggle }: SidebarProps) {
                 </div>
               )}
             </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <Link
-                to="/admin"
-                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              >
-                <Settings className="h-4 w-4" />
-                <span>Admin</span>
-              </Link>
-              <a
-                href="#"
-                className="flex items-center gap-1 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              >
-                <span>NightOwl</span>
-                <ExternalLink className="h-3 w-3" />
-              </a>
-            </div>
+          ) : null}
+        </div>
+
+        <div className="px-3 pb-2 space-y-0.5">
+          {profile?.role === 'admin' && (
+            <Link
+              to="/admin"
+              className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground [&.active]:bg-muted [&.active]:text-accent"
+            >
+              <Settings className="h-4 w-4" />
+              Admin
+            </Link>
           )}
+          <Link
+            to="/about"
+            className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground [&.active]:bg-muted [&.active]:text-accent"
+          >
+            <Info className="h-4 w-4" />
+            About
+          </Link>
         </div>
       </aside>
 

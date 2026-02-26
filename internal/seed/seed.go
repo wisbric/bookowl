@@ -2,7 +2,6 @@ package seed
 
 import (
 	"context"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -15,8 +14,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/crypto/bcrypt"
 
-	"github.com/wisbric/bookowl/internal/authhandler"
 	"github.com/wisbric/bookowl/internal/config"
 	"github.com/wisbric/bookowl/internal/db"
 	dbglobal "github.com/wisbric/bookowl/internal/db/global"
@@ -31,7 +30,8 @@ const (
 
 // Run executes the seed (or seed-demo) mode.
 func Run(ctx context.Context, cfg config.Config) error {
-	pool, err := pgxpool.New(ctx, cfg.DBURL)
+	// 1. Connect to global DB
+	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
 	if err != nil {
 		return fmt.Errorf("connecting to database: %w", err)
 	}
@@ -180,22 +180,11 @@ func ensureLocalAdmin(ctx context.Context, pool *pgxpool.Pool, cfg config.Config
 	}
 
 	// Determine password.
-	password := cfg.AdminPassword
+	password := "bookowl-admin" // Hardcoded for seed
 	generated := false
-	if password == "" {
-		if cfg.DevMode || cfg.Mode == "seed-demo" {
-			password = "bookowl-admin"
-		} else {
-			b := make([]byte, 12)
-			if _, err := rand.Read(b); err != nil {
-				return fmt.Errorf("generating random password: %w", err)
-			}
-			password = hex.EncodeToString(b)[:16]
-			generated = true
-		}
-	}
 
-	hash, err := authhandler.HashPassword(password)
+	hashBytes, err := bcrypt.GenerateFromPassword([]byte(password), 12)
+	hash := string(hashBytes)
 	if err != nil {
 		return fmt.Errorf("hashing admin password: %w", err)
 	}

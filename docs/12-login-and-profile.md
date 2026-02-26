@@ -2,13 +2,15 @@
 
 ## 1. Overview
 
-BookOwl has three auth entry points:
+BookOwl has three auth entry points, all handled by the shared `core/pkg/auth` package:
 
 | Method | Who uses it | How |
 |--------|-------------|-----|
-| OIDC (Keycloak) | All regular users | Redirect to Keycloak, back to `/auth/callback` |
-| Local admin | Break-glass / initial setup | Username + password on the login page |
+| OIDC (Keycloak) | All regular users | Redirect to Keycloak, back to `/auth/callback` → sets `wisbric_session` cookie |
+| Local admin | Break-glass / initial setup | Username + password on the login page → sets `wisbric_session` cookie |
 | API Key | Service-to-service (NightOwl) | `X-API-Key` header, no login page involved |
+
+All browser sessions use the `wisbric_session` HttpOnly cookie (shared cookie name across NightOwl, BookOwl, and TicketOwl). The middleware automatically refreshes the cookie when the token has less than 2 hours remaining.
 
 The local admin account exists so BookOwl is accessible when Keycloak is misconfigured or unavailable. It is a single account per tenant, not a full local user directory.
 
@@ -68,13 +70,13 @@ Route: `/auth/callback` — handles the OIDC authorization code flow:
 4. Extract claims: `sub`, `email`, `preferred_username`, `given_name`, `family_name`, `groups`
 5. Upsert user in `users` table (create on first login, update name/email on subsequent)
 6. Map groups → BookOwl role (per `docs/11-oidc-admin.md`)
-7. Issue BookOwl session token (JWT signed with `BOOKOWL_SECRET_KEY`)
-8. Set `bw_session` cookie (HttpOnly, Secure, SameSite=Strict)
+7. Issue session JWT (signed by `core/pkg/auth.SessionManager` using the shared secret key)
+8. Set `wisbric_session` cookie (HttpOnly, Secure, SameSite=Strict)
 9. Redirect to `?return=` or `/`
 
 ### 2.3 Session Token
 
-BookOwl issues its own short-lived session JWT rather than forwarding the Keycloak token to the frontend. This decouples the frontend from Keycloak and means token refresh is handled server-side.
+The `core/pkg/auth.SessionManager` issues short-lived session JWTs rather than forwarding the Keycloak token to the frontend. This decouples the frontend from Keycloak and means token refresh is handled server-side.
 
 ```json
 {
@@ -87,7 +89,7 @@ BookOwl issues its own short-lived session JWT rather than forwarding the Keyclo
 }
 ```
 
-Cookie: `bw_session` — HttpOnly, Secure, SameSite=Strict, Path=/
+Cookie: `wisbric_session` — HttpOnly, Secure, SameSite=Strict, Path=/
 
 Refresh: The API automatically issues a new cookie when the token has less than 2h remaining (silent refresh, no frontend action needed).
 
@@ -171,7 +173,7 @@ When `must_change = true` and the local admin logs in, they are redirected to `/
 POST /auth/local
      Content-Type: application/json
      Body: { "username": "admin", "password": "..." }
-     → 200: sets bw_session cookie, returns { "redirect": "/" }
+     → 200: sets wisbric_session cookie, returns { "redirect": "/" }
      → 401: { "error": "invalid credentials" }
      → 403: { "error": "must_change_password", "redirect": "/change-password" }
      → 429: { "error": "too_many_attempts", "retry_after": 847 }
@@ -181,7 +183,7 @@ POST /auth/local
 
 ```
 POST /auth/logout
-     → Clears bw_session cookie
+     → Clears wisbric_session cookie
      → Redirects to /login
 ```
 
@@ -433,42 +435,18 @@ ALTER TABLE api_keys ADD COLUMN last_used_at TIMESTAMPTZ;
 
 ---
 
-## 9. Session Middleware Update
+## 9. Auth Middleware
 
-The existing auth middleware needs to handle three token types:
+Auth is handled by `core/pkg/auth.Middleware` (shared across all owl services). The middleware checks authentication methods in this order:
 
-```go
-func AuthMiddleware(localAdmin *LocalAdminStore, apiKeys *APIKeyStore, oidc *OIDCMiddleware) func(http.Handler) http.Handler {
-    return func(next http.Handler) http.Handler {
-        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-            // 1. Check bw_session cookie (OIDC or local admin session)
-            if cookie, err := r.Cookie("bw_session"); err == nil {
-                if claims, err := validateSessionJWT(cookie.Value); err == nil {
-                    ctx := contextWithUser(r.Context(), claims)
-                    next.ServeHTTP(w, r.WithContext(ctx))
-                    return
-                }
-            }
+1. **Cookie** — `wisbric_session` HttpOnly cookie (OIDC or local admin session), with silent refresh when <2h remaining
+2. **PAT** — Personal Access Token (`Authorization: Bearer bwp_...`)
+3. **Session JWT** — `Authorization: Bearer <session-jwt>`
+4. **OIDC JWT** — `Authorization: Bearer <oidc-token>`
+5. **API Key** — `X-API-Key` header (service keys and personal tokens)
+6. **Dev header** — `X-Tenant-Slug` header (`DEV_MODE=true` only)
 
-            // 2. Check X-API-Key header (service key or personal token)
-            if key := r.Header.Get("X-API-Key"); key != "" {
-                if apiKey, err := apiKeys.Validate(r.Context(), key); err == nil {
-                    ctx := contextWithAPIKey(r.Context(), apiKey)
-                    next.ServeHTTP(w, r.WithContext(ctx))
-                    return
-                }
-            }
-
-            // 3. Dev fallback: X-Tenant-Slug + X-Dev-User headers (BOOKOWL_DEV_MODE=true only)
-            if isDev && r.Header.Get("X-Tenant-Slug") != "" {
-                // grant admin, proceed
-            }
-
-            httpserver.RespondError(w, http.StatusUnauthorized, "authentication required")
-        })
-    }
-}
-```
+BookOwl's auth storage adapter (`internal/authadapter/adapter.go`) implements `core/pkg/auth.Storage` and overrides `FindLocalAdmin` to handle BookOwl's `tenant_slug`-based `local_admins` table. OIDC group-to-role mapping is in `internal/authadapter/groups.go`.
 
 ---
 

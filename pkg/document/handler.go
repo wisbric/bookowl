@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/wisbric/bookowl/internal/httpserver"
+	"github.com/wisbric/core/pkg/httpserver"
 	"github.com/wisbric/bookowl/pkg/tenant"
 )
 
@@ -39,8 +39,8 @@ func (h *Handler) Routes(extraDocRoutes ...func(chi.Router)) chi.Router {
 
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	var req CreateRequest
-	if err := httpserver.DecodeJSON(r, &req); err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+	if !httpserver.DecodeAndValidate(w, r, &req) {
+
 		return
 	}
 
@@ -56,26 +56,26 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
-	pg := httpserver.ParsePagination(r)
+	pg , _ := httpserver.ParseOffsetParams(r)
 
 	store := NewStore(tenant.ConnFromContext(r.Context()))
-	items, total, err := h.svc.List(r.Context(), store, pg.Limit, pg.Offset)
+	items, total, err := h.svc.List(r.Context(), store, int32(pg.PageSize), int32(pg.Offset))
 	if err != nil {
 		handleError(w, err)
 		return
 	}
-	httpserver.Respond(w, http.StatusOK, httpserver.ListResponse[Response]{
-		Items:  items,
-		Total:  total,
-		Limit:  pg.Limit,
-		Offset: pg.Offset,
+	httpserver.Respond(w, http.StatusOK, httpserver.OffsetPage[Response]{
+		Items:      items,
+		TotalItems: int(total),
+		PageSize:   pg.PageSize,
+		Page:       pg.Page,
 	})
 }
 
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	id, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -91,13 +91,13 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	id, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
 	var req UpdateRequest
-	if err := httpserver.DecodeJSON(r, &req); err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+	if !httpserver.DecodeAndValidate(w, r, &req) {
+
 		return
 	}
 
@@ -115,7 +115,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	id, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -130,13 +130,13 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ListVersions(w http.ResponseWriter, r *http.Request) {
 	id, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
-	pg := httpserver.ParsePagination(r)
+	pg , _ := httpserver.ParseOffsetParams(r)
 
 	store := NewStore(tenant.ConnFromContext(r.Context()))
-	versions, err := h.svc.ListVersions(r.Context(), store, id, pg.Limit, pg.Offset)
+	versions, err := h.svc.ListVersions(r.Context(), store, id, int32(pg.PageSize), int32(pg.Offset))
 	if err != nil {
 		handleError(w, err)
 		return
@@ -147,7 +147,7 @@ func (h *Handler) ListVersions(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) GetVersion(w http.ResponseWriter, r *http.Request) {
 	versionID, err := httpserver.URLParamUUID(r, "versionId")
 	if err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -163,12 +163,12 @@ func (h *Handler) GetVersion(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Restore(w http.ResponseWriter, r *http.Request) {
 	docID, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 	versionID, err := httpserver.URLParamUUID(r, "versionId")
 	if err != nil {
-		httpserver.RespondError(w, http.StatusBadRequest, err.Error())
+httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -186,11 +186,11 @@ func (h *Handler) Restore(w http.ResponseWriter, r *http.Request) {
 func handleError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, ErrNotFound):
-		httpserver.RespondError(w, http.StatusNotFound, err.Error())
+httpserver.RespondError(w, http.StatusNotFound, "error", err.Error())
 	case errors.Is(err, ErrSlugConflict):
-		httpserver.RespondError(w, http.StatusConflict, err.Error())
+httpserver.RespondError(w, http.StatusConflict, "error", err.Error())
 	default:
 		slog.Error("document handler error", "error", err)
-		httpserver.RespondError(w, http.StatusInternalServerError, "internal error")
+httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
 	}
 }

@@ -77,11 +77,12 @@ pkg/
 
 internal/
 ├── app/             # Application orchestrator (api, seed, seed-demo)
-├── auth/            # OIDC + API key middleware (same as NightOwl)
+├── authadapter/     # Auth storage adapter (implements core/pkg/auth.Storage) + OIDC group→role mapping
 ├── audit/           # Async audit log writer
-├── config/          # Env-based config
+├── config/          # Env-based config (extends core BaseConfig)
 ├── db/              # sqlc-generated models and queries
-├── docs/            # OpenAPI/Swagger UI
+│   ├── global/      # Global schema (tenants, API keys)
+│   └── tenant/      # Per-tenant schema (documents, users, etc.)
 ├── httpserver/      # Chi server, middleware, response helpers, pagination
 ├── platform/        # PostgreSQL pool, Redis client, migration runner
 ├── seed/            # Dev seed + demo seed
@@ -165,11 +166,30 @@ GET    /api/v1/audit-log
 
 ## 4. Authentication
 
-Identical pattern to NightOwl:
+Auth is handled by the shared `core/pkg/auth` package (same as NightOwl/TicketOwl). All browser sessions use HttpOnly cookies.
 
-- **OIDC/JWT** — web users, same OIDC provider as NightOwl
-- **API Key** (`X-API-Key` header) — NightOwl service account, other integrations
-- **Dev header** (`X-Tenant-Slug`) — development fallback
+| Method | Header / Cookie | Who uses it |
+|--------|----------------|-------------|
+| Cookie session | `wisbric_session` (HttpOnly, Secure, SameSite=Strict) | Browser users (OIDC and local admin) |
+| Personal Access Token | `Authorization: Bearer bwp_...` | User scripts and tools |
+| Session JWT | `Authorization: Bearer <jwt>` | Backward-compatible JWT callers |
+| OIDC JWT | `Authorization: Bearer <oidc-token>` | Direct OIDC token callers |
+| API Key | `X-API-Key` header | NightOwl service account, other integrations |
+| Dev header | `X-Tenant-Slug` | Development fallback (`DEV_MODE=true` only) |
+
+**Middleware precedence:** Cookie → PAT → Session JWT (Bearer) → OIDC JWT (Bearer) → API Key → Dev header.
+
+Login endpoints (`/auth/local`, `/auth/oidc/login`, `/auth/callback`) set the `wisbric_session` cookie on success. The middleware automatically refreshes the cookie when the token has less than 2 hours remaining (silent refresh).
+
+Auth routes are mounted at `/auth` (not under `/api/v1`):
+- `POST /auth/local` — local admin login (sets cookie)
+- `POST /auth/logout` — clears cookie
+- `GET /auth/oidc/login` — initiate OIDC redirect
+- `GET /auth/callback` — OIDC callback handler
+- `POST /auth/change-password` — change local admin password
+- `GET /auth/me` — current user info
+
+The auth storage adapter lives in `internal/authadapter/adapter.go` and implements `core/pkg/auth.Storage`. It overrides `FindLocalAdmin` because BookOwl's `local_admins` table uses `tenant_slug` (text) instead of `tenant_id` (uuid), requiring a JOIN with the `tenants` table. OIDC group-to-role mapping is in `internal/authadapter/groups.go`.
 
 NightOwl authenticates to BookOwl using a dedicated service account API key configured per tenant via `BOOKOWL_NIGHTOWL_API_KEY`.
 
