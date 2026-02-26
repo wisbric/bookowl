@@ -3,7 +3,6 @@ bin/
 *.exe
 *.test
 *.out
-vendor/
 tmp/
 
 # Environment
