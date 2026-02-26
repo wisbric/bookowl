@@ -26,3 +26,7 @@ bookowl
 # OS
 *.Zone.Identifier
 .DS_Store
+
+# Go workspace (local dev only)
+go.work
+go.work.sum

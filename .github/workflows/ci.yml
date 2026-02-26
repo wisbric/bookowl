@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  GOPRIVATE: github.com/wisbric/*
+  GONOSUMDB: github.com/wisbric/*
+
 jobs:
   backend:
     runs-on: ubuntu-latest
@@ -25,14 +29,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        with:
-          repository: wisbric/core
-          path: ../core
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25"
           cache: true
+      - name: Configure private module access
+        run: git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
       - name: Install sqlc
         run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
       - name: Verify sqlc diff
