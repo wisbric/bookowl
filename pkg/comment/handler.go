@@ -10,6 +10,7 @@ import (
 
 	"github.com/wisbric/core/pkg/auth"
 	"github.com/wisbric/core/pkg/httpserver"
+
 	"github.com/wisbric/bookowl/pkg/tenant"
 )
 
@@ -40,7 +41,7 @@ func (h *Handler) CommentRoutes() func(chi.Router) {
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	docID, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -64,12 +65,12 @@ httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 func (h *Handler) Reply(w http.ResponseWriter, r *http.Request) {
 	docID, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 	commentID, err := httpserver.URLParamUUID(r, "commentId")
 	if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -93,7 +94,7 @@ httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	commentID, err := httpserver.URLParamUUID(r, "commentId")
 	if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -118,7 +119,7 @@ httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	commentID, err := httpserver.URLParamUUID(r, "commentId")
 	if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -136,7 +137,7 @@ httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 func (h *Handler) Resolve(w http.ResponseWriter, r *http.Request) {
 	commentID, err := httpserver.URLParamUUID(r, "commentId")
 	if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -153,7 +154,7 @@ httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 func (h *Handler) Unresolve(w http.ResponseWriter, r *http.Request) {
 	commentID, err := httpserver.URLParamUUID(r, "commentId")
 	if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -169,7 +170,7 @@ httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	docID, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -187,7 +188,7 @@ httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 func (h *Handler) Count(w http.ResponseWriter, r *http.Request) {
 	docID, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -219,19 +220,19 @@ func isAdminRole(r *http.Request) bool {
 func handleError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, ErrNotFound):
-httpserver.RespondError(w, http.StatusNotFound, "error", err.Error())
+		httpserver.RespondError(w, http.StatusNotFound, "error", err.Error())
 	case errors.Is(err, ErrReplyToReply):
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 	case errors.Is(err, ErrNotTopLevel):
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 	case errors.Is(err, ErrEmptyBody):
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 	case errors.Is(err, ErrEditWindowExpired):
-httpserver.RespondError(w, http.StatusForbidden, "error", err.Error())
+		httpserver.RespondError(w, http.StatusForbidden, "error", err.Error())
 	case errors.Is(err, ErrNotAuthor):
-httpserver.RespondError(w, http.StatusForbidden, "error", err.Error())
+		httpserver.RespondError(w, http.StatusForbidden, "error", err.Error())
 	default:
 		slog.Error("comment handler error", "error", err)
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
 	}
 }

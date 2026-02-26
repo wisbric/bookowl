@@ -30,7 +30,7 @@ type S3Config struct {
 	Bucket          string
 	Region          string
 	AccessKeyID     string
-	SecretAccessKey  string
+	SecretAccessKey string
 	PublicURL       string
 	UsePresign      bool
 }

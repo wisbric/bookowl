@@ -13,39 +13,39 @@ import (
 )
 
 var (
-	ErrNotFound    = errors.New("document not found")
+	ErrNotFound     = errors.New("document not found")
 	ErrSlugConflict = errors.New("document slug already exists in this space")
 )
 
 type CreateRequest struct {
-	SpaceID            uuid.UUID        `json:"space_id"`
-	CollectionID       *uuid.UUID       `json:"collection_id,omitempty"`
-	Title              string           `json:"title"`
-	Slug               string           `json:"slug"`
-	Content            json.RawMessage  `json:"content"`
-	DocType            string           `json:"doc_type,omitempty"`
-	Status             string           `json:"status,omitempty"`
-	Tags               []string         `json:"tags,omitempty"`
-	Icon               *string          `json:"icon,omitempty"`
-	Position           int32            `json:"position,omitempty"`
-	NightOwlIncidentID *string          `json:"nightowl_incident_id,omitempty"`
-	NightOwlAlertID    *string          `json:"nightowl_alert_id,omitempty"`
-	TemplateID         *uuid.UUID       `json:"template_id,omitempty"`
+	SpaceID            uuid.UUID       `json:"space_id"`
+	CollectionID       *uuid.UUID      `json:"collection_id,omitempty"`
+	Title              string          `json:"title"`
+	Slug               string          `json:"slug"`
+	Content            json.RawMessage `json:"content"`
+	DocType            string          `json:"doc_type,omitempty"`
+	Status             string          `json:"status,omitempty"`
+	Tags               []string        `json:"tags,omitempty"`
+	Icon               *string         `json:"icon,omitempty"`
+	Position           int32           `json:"position,omitempty"`
+	NightOwlIncidentID *string         `json:"nightowl_incident_id,omitempty"`
+	NightOwlAlertID    *string         `json:"nightowl_alert_id,omitempty"`
+	TemplateID         *uuid.UUID      `json:"template_id,omitempty"`
 }
 
 type UpdateRequest struct {
-	CollectionID       *uuid.UUID       `json:"collection_id,omitempty"`
-	Title              string           `json:"title"`
-	Slug               string           `json:"slug"`
-	Content            json.RawMessage  `json:"content"`
-	DocType            string           `json:"doc_type,omitempty"`
-	Status             string           `json:"status,omitempty"`
-	Tags               []string         `json:"tags,omitempty"`
-	Icon               *string          `json:"icon,omitempty"`
-	Position           int32            `json:"position,omitempty"`
-	NightOwlIncidentID *string          `json:"nightowl_incident_id,omitempty"`
-	NightOwlAlertID    *string          `json:"nightowl_alert_id,omitempty"`
-	ChangeSummary      *string          `json:"change_summary,omitempty"`
+	CollectionID       *uuid.UUID      `json:"collection_id,omitempty"`
+	Title              string          `json:"title"`
+	Slug               string          `json:"slug"`
+	Content            json.RawMessage `json:"content"`
+	DocType            string          `json:"doc_type,omitempty"`
+	Status             string          `json:"status,omitempty"`
+	Tags               []string        `json:"tags,omitempty"`
+	Icon               *string         `json:"icon,omitempty"`
+	Position           int32           `json:"position,omitempty"`
+	NightOwlIncidentID *string         `json:"nightowl_incident_id,omitempty"`
+	NightOwlAlertID    *string         `json:"nightowl_alert_id,omitempty"`
+	ChangeSummary      *string         `json:"change_summary,omitempty"`
 }
 
 type Response struct {

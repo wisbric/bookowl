@@ -7,12 +7,13 @@ import (
 	"os"
 	"time"
 
+	"github.com/wisbric/core/pkg/telemetry"
+	"github.com/wisbric/core/pkg/version"
+
 	"github.com/wisbric/bookowl/internal/app"
 	"github.com/wisbric/bookowl/internal/config"
 	"github.com/wisbric/bookowl/internal/migrate"
 	"github.com/wisbric/bookowl/internal/seed"
-	"github.com/wisbric/core/pkg/telemetry"
-	"github.com/wisbric/core/pkg/version"
 )
 
 func main() {

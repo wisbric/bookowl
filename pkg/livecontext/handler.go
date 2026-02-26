@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/wisbric/core/pkg/httpserver"
+
 	"github.com/wisbric/bookowl/pkg/tenant"
 )
 
@@ -35,13 +36,13 @@ func (h *Handler) Routes() chi.Router {
 func (h *Handler) OnCall(w http.ResponseWriter, r *http.Request) {
 	rosterID := chi.URLParam(r, "rosterId")
 	if rosterID == "" {
-httpserver.RespondError(w, http.StatusBadRequest, "error", "roster ID is required")
+		httpserver.RespondError(w, http.StatusBadRequest, "error", "roster ID is required")
 		return
 	}
 
 	t, cfg := resolveConfig(r)
 	if cfg == nil {
-httpserver.RespondError(w, http.StatusServiceUnavailable, "error", "NightOwl not configured for this tenant")
+		httpserver.RespondError(w, http.StatusServiceUnavailable, "error", "NightOwl not configured for this tenant")
 		return
 	}
 
@@ -54,13 +55,13 @@ httpserver.RespondError(w, http.StatusServiceUnavailable, "error", "NightOwl not
 func (h *Handler) ServiceStatus(w http.ResponseWriter, r *http.Request) {
 	serviceName := chi.URLParam(r, "serviceName")
 	if serviceName == "" {
-httpserver.RespondError(w, http.StatusBadRequest, "error", "service name is required")
+		httpserver.RespondError(w, http.StatusBadRequest, "error", "service name is required")
 		return
 	}
 
 	t, cfg := resolveConfig(r)
 	if cfg == nil {
-httpserver.RespondError(w, http.StatusServiceUnavailable, "error", "NightOwl not configured for this tenant")
+		httpserver.RespondError(w, http.StatusServiceUnavailable, "error", "NightOwl not configured for this tenant")
 		return
 	}
 
@@ -84,7 +85,7 @@ func (h *Handler) ActiveAlerts(w http.ResponseWriter, r *http.Request) {
 
 	t, cfg := resolveConfig(r)
 	if cfg == nil {
-httpserver.RespondError(w, http.StatusServiceUnavailable, "error", "NightOwl not configured for this tenant")
+		httpserver.RespondError(w, http.StatusServiceUnavailable, "error", "NightOwl not configured for this tenant")
 		return
 	}
 
@@ -97,13 +98,13 @@ httpserver.RespondError(w, http.StatusServiceUnavailable, "error", "NightOwl not
 func (h *Handler) IncidentStatus(w http.ResponseWriter, r *http.Request) {
 	incidentID := chi.URLParam(r, "incidentId")
 	if incidentID == "" {
-httpserver.RespondError(w, http.StatusBadRequest, "error", "incident ID is required")
+		httpserver.RespondError(w, http.StatusBadRequest, "error", "incident ID is required")
 		return
 	}
 
 	t, cfg := resolveConfig(r)
 	if cfg == nil {
-httpserver.RespondError(w, http.StatusServiceUnavailable, "error", "NightOwl not configured for this tenant")
+		httpserver.RespondError(w, http.StatusServiceUnavailable, "error", "NightOwl not configured for this tenant")
 		return
 	}
 

@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/wisbric/core/pkg/httpserver"
+
 	"github.com/wisbric/bookowl/pkg/tenant"
 )
 
@@ -44,7 +45,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	if s := r.URL.Query().Get("space_id"); s != "" {
 		id, err := uuid.Parse(s)
 		if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", "invalid space_id")
+			httpserver.RespondError(w, http.StatusBadRequest, "error", "invalid space_id")
 			return
 		}
 		spaceID = &id
@@ -63,7 +64,7 @@ httpserver.RespondError(w, http.StatusBadRequest, "error", "invalid space_id")
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	id, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -97,7 +98,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	id, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -119,7 +120,7 @@ httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	id, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -134,7 +135,7 @@ httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 func (h *Handler) SaveAsTemplate(w http.ResponseWriter, r *http.Request) {
 	docID, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -158,11 +159,11 @@ httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 func handleError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, ErrNotFound):
-httpserver.RespondError(w, http.StatusNotFound, "error", err.Error())
+		httpserver.RespondError(w, http.StatusNotFound, "error", err.Error())
 	case errors.Is(err, ErrSystemReadOnly):
-httpserver.RespondError(w, http.StatusForbidden, "error", err.Error())
+		httpserver.RespondError(w, http.StatusForbidden, "error", err.Error())
 	default:
 		slog.Error("template handler error", "error", err)
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
 	}
 }

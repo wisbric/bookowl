@@ -9,11 +9,12 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/wisbric/bookowl/internal/authadapter"
 	"github.com/wisbric/core/pkg/auth"
+	"github.com/wisbric/core/pkg/httpserver"
+
+	"github.com/wisbric/bookowl/internal/authadapter"
 	dbglobal "github.com/wisbric/bookowl/internal/db/global"
 	dbtenant "github.com/wisbric/bookowl/internal/db/tenant"
-	"github.com/wisbric/core/pkg/httpserver"
 )
 
 var validSlug = regexp.MustCompile(`^[a-z][a-z0-9_]{0,62}$`)

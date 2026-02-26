@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/wisbric/core/pkg/httpserver"
+
 	"github.com/wisbric/bookowl/pkg/tenant"
 )
 
@@ -69,7 +70,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	id, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -85,7 +86,7 @@ httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	id, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -107,7 +108,7 @@ httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	id, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -122,7 +123,7 @@ httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 func (h *Handler) ListMembers(w http.ResponseWriter, r *http.Request) {
 	id, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -138,7 +139,7 @@ httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 func (h *Handler) AddMember(w http.ResponseWriter, r *http.Request) {
 	id, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -159,12 +160,12 @@ httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 func (h *Handler) RemoveMember(w http.ResponseWriter, r *http.Request) {
 	spaceID, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 	userID, err := httpserver.URLParamUUID(r, "userId")
 	if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -179,7 +180,7 @@ httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 func (h *Handler) Tree(w http.ResponseWriter, r *http.Request) {
 	id, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -195,10 +196,10 @@ httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 func handleError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, ErrNotFound):
-httpserver.RespondError(w, http.StatusNotFound, "error", err.Error())
+		httpserver.RespondError(w, http.StatusNotFound, "error", err.Error())
 	case errors.Is(err, ErrSlugConflict):
-httpserver.RespondError(w, http.StatusConflict, "error", err.Error())
+		httpserver.RespondError(w, http.StatusConflict, "error", err.Error())
 	default:
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
 	}
 }

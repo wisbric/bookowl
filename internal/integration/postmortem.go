@@ -102,11 +102,11 @@ func renderHTML(content json.RawMessage) string {
 }
 
 type tiptapNode struct {
-	Type    string            `json:"type"`
-	Text    string            `json:"text,omitempty"`
-	Attrs   map[string]any    `json:"attrs,omitempty"`
-	Marks   []tiptapMark      `json:"marks,omitempty"`
-	Content []tiptapNode      `json:"content,omitempty"`
+	Type    string         `json:"type"`
+	Text    string         `json:"text,omitempty"`
+	Attrs   map[string]any `json:"attrs,omitempty"`
+	Marks   []tiptapMark   `json:"marks,omitempty"`
+	Content []tiptapNode   `json:"content,omitempty"`
 }
 
 type tiptapMark struct {

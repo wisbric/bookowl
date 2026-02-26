@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/wisbric/core/pkg/httpserver"
+
 	"github.com/wisbric/bookowl/pkg/tenant"
 )
 
@@ -56,7 +57,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
-	pg , _ := httpserver.ParseOffsetParams(r)
+	pg, _ := httpserver.ParseOffsetParams(r)
 
 	store := NewStore(tenant.ConnFromContext(r.Context()))
 	items, total, err := h.svc.List(r.Context(), store, int32(pg.PageSize), int32(pg.Offset))
@@ -75,7 +76,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	id, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -91,7 +92,7 @@ httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	id, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -115,7 +116,7 @@ httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	id, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -130,10 +131,10 @@ httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 func (h *Handler) ListVersions(w http.ResponseWriter, r *http.Request) {
 	id, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
-	pg , _ := httpserver.ParseOffsetParams(r)
+	pg, _ := httpserver.ParseOffsetParams(r)
 
 	store := NewStore(tenant.ConnFromContext(r.Context()))
 	versions, err := h.svc.ListVersions(r.Context(), store, id, int32(pg.PageSize), int32(pg.Offset))
@@ -147,7 +148,7 @@ httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 func (h *Handler) GetVersion(w http.ResponseWriter, r *http.Request) {
 	versionID, err := httpserver.URLParamUUID(r, "versionId")
 	if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -163,12 +164,12 @@ httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 func (h *Handler) Restore(w http.ResponseWriter, r *http.Request) {
 	docID, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 	versionID, err := httpserver.URLParamUUID(r, "versionId")
 	if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -186,11 +187,11 @@ httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 func handleError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, ErrNotFound):
-httpserver.RespondError(w, http.StatusNotFound, "error", err.Error())
+		httpserver.RespondError(w, http.StatusNotFound, "error", err.Error())
 	case errors.Is(err, ErrSlugConflict):
-httpserver.RespondError(w, http.StatusConflict, "error", err.Error())
+		httpserver.RespondError(w, http.StatusConflict, "error", err.Error())
 	default:
 		slog.Error("document handler error", "error", err)
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
 	}
 }

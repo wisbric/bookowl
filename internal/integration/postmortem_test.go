@@ -112,11 +112,11 @@ func TestBuildPostMortemContent(t *testing.T) {
 
 func TestBuildPostMortemContent_SpecialChars(t *testing.T) {
 	incident := PostMortemIncident{
-		Title:     `Incident with "quotes" and \backslash`,
-		Severity:  "major",
-		RootCause: "Line1\nLine2",
-		Solution:  "Fixed\tit",
-		CreatedAt: "2025-01-15",
+		Title:      `Incident with "quotes" and \backslash`,
+		Severity:   "major",
+		RootCause:  "Line1\nLine2",
+		Solution:   "Fixed\tit",
+		CreatedAt:  "2025-01-15",
 		ResolvedBy: "user",
 	}
 

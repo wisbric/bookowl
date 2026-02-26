@@ -9,8 +9,9 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/wisbric/core/pkg/auth"
-	dbglobal "github.com/wisbric/bookowl/internal/db/global"
 	"github.com/wisbric/core/pkg/httpserver"
+
+	dbglobal "github.com/wisbric/bookowl/internal/db/global"
 	"github.com/wisbric/bookowl/pkg/livecontext"
 	"github.com/wisbric/bookowl/pkg/tenant"
 )
@@ -51,7 +52,7 @@ func requireAdmin(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		identity := auth.FromContext(r.Context())
 		if identity == nil || identity.Role != "admin" {
-httpserver.RespondError(w, http.StatusForbidden, "error", "admin role required")
+			httpserver.RespondError(w, http.StatusForbidden, "error", "admin role required")
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -73,7 +74,7 @@ type ConfigUpdateRequest struct {
 func (h *Handler) GetConfig(w http.ResponseWriter, r *http.Request) {
 	t, ok := tenant.FromContext(r.Context())
 	if !ok {
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "tenant not resolved")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "tenant not resolved")
 		return
 	}
 
@@ -99,7 +100,7 @@ func (h *Handler) UpdateConfig(w http.ResponseWriter, r *http.Request) {
 
 	t, ok := tenant.FromContext(r.Context())
 	if !ok {
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "tenant not resolved")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "tenant not resolved")
 		return
 	}
 
@@ -120,7 +121,7 @@ httpserver.RespondError(w, http.StatusInternalServerError, "error", "tenant not 
 
 	configJSON, err := json.Marshal(existing)
 	if err != nil {
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to serialize config")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to serialize config")
 		return
 	}
 
@@ -131,7 +132,7 @@ httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to s
 	})
 	if err != nil {
 		slog.Error("updating tenant config", "tenant", t.Slug, "error", err)
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to update config")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to update config")
 		return
 	}
 
@@ -147,7 +148,7 @@ type TestNightOwlResponse struct {
 func (h *Handler) TestNightOwl(w http.ResponseWriter, r *http.Request) {
 	t, ok := tenant.FromContext(r.Context())
 	if !ok {
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "tenant not resolved")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "tenant not resolved")
 		return
 	}
 

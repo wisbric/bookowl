@@ -14,10 +14,11 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/wisbric/core/pkg/auth"
+	"github.com/wisbric/core/pkg/httpserver"
+
 	"github.com/wisbric/bookowl/internal/db"
 	dbglobal "github.com/wisbric/bookowl/internal/db/global"
 	dbtenant "github.com/wisbric/bookowl/internal/db/tenant"
-	"github.com/wisbric/core/pkg/httpserver"
 	"github.com/wisbric/bookowl/pkg/tenant"
 )
 
@@ -55,13 +56,13 @@ type ProfileResponse struct {
 func (h *ProfileHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	identity := auth.FromContext(r.Context())
 	if identity == nil {
-httpserver.RespondError(w, http.StatusUnauthorized, "error", "not authenticated")
+		httpserver.RespondError(w, http.StatusUnauthorized, "error", "not authenticated")
 		return
 	}
 
 	conn := tenant.ConnFromContext(r.Context())
 	if conn == nil {
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "no database connection")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "no database connection")
 		return
 	}
 	q := dbtenant.New(conn)
@@ -106,7 +107,7 @@ func (h *ProfileHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 
 	userID := tenant.UserIDFromContext(r.Context())
 	if !userID.Valid {
-httpserver.RespondError(w, http.StatusForbidden, "error", "user not resolved")
+		httpserver.RespondError(w, http.StatusForbidden, "error", "user not resolved")
 		return
 	}
 
@@ -120,7 +121,7 @@ httpserver.RespondError(w, http.StatusForbidden, "error", "user not resolved")
 	})
 	if err != nil {
 		slog.Error("updating profile", "error", err)
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to update profile")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to update profile")
 		return
 	}
 
@@ -160,7 +161,7 @@ type CreateTokenRequest struct {
 func (h *ProfileHandler) ListTokens(w http.ResponseWriter, r *http.Request) {
 	t, ok := tenant.FromContext(r.Context())
 	if !ok {
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "tenant not resolved")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "tenant not resolved")
 		return
 	}
 
@@ -176,7 +177,7 @@ httpserver.RespondError(w, http.StatusInternalServerError, "error", "tenant not 
 	})
 	if err != nil {
 		slog.Error("listing personal tokens", "error", err)
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to list tokens")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to list tokens")
 		return
 	}
 
@@ -210,27 +211,27 @@ func (h *ProfileHandler) CreateToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.Name == "" {
-httpserver.RespondError(w, http.StatusBadRequest, "error", "token name is required")
+		httpserver.RespondError(w, http.StatusBadRequest, "error", "token name is required")
 		return
 	}
 
 	t, ok := tenant.FromContext(r.Context())
 	if !ok {
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "tenant not resolved")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "tenant not resolved")
 		return
 	}
 
 	identity := auth.FromContext(r.Context())
 	userID := tenant.UserIDFromContext(r.Context())
 	if !userID.Valid {
-httpserver.RespondError(w, http.StatusForbidden, "error", "user not resolved")
+		httpserver.RespondError(w, http.StatusForbidden, "error", "user not resolved")
 		return
 	}
 
 	// Generate random token.
 	rawBytes := make([]byte, 32)
 	if _, err := rand.Read(rawBytes); err != nil {
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to generate token")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to generate token")
 		return
 	}
 	plaintext := "bwp_" + hex.EncodeToString(rawBytes)
@@ -244,7 +245,7 @@ httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to g
 	if req.ExpiresIn != nil && *req.ExpiresIn != "" {
 		dur, err := parseExpiration(*req.ExpiresIn)
 		if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+			httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 			return
 		}
 		expiresAt = pgtype.Timestamptz{Time: time.Now().Add(dur), Valid: true}
@@ -261,7 +262,7 @@ httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 	})
 	if err != nil {
 		slog.Error("creating personal token", "error", err)
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to create token")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to create token")
 		return
 	}
 
@@ -285,19 +286,19 @@ httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to c
 func (h *ProfileHandler) RevokeToken(w http.ResponseWriter, r *http.Request) {
 	tokenID, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
 	t, ok := tenant.FromContext(r.Context())
 	if !ok {
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "tenant not resolved")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "tenant not resolved")
 		return
 	}
 
 	userID := tenant.UserIDFromContext(r.Context())
 	if !userID.Valid {
-httpserver.RespondError(w, http.StatusForbidden, "error", "user not resolved")
+		httpserver.RespondError(w, http.StatusForbidden, "error", "user not resolved")
 		return
 	}
 
@@ -308,11 +309,11 @@ httpserver.RespondError(w, http.StatusForbidden, "error", "user not resolved")
 	})
 	if err != nil {
 		if db.IsNotFound(err) {
-httpserver.RespondError(w, http.StatusNotFound, "error", "token not found")
+			httpserver.RespondError(w, http.StatusNotFound, "error", "token not found")
 			return
 		}
 		slog.Error("revoking personal token", "error", err)
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to revoke token")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to revoke token")
 		return
 	}
 

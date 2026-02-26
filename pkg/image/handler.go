@@ -12,9 +12,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	"github.com/wisbric/core/pkg/httpserver"
+
 	"github.com/wisbric/bookowl/internal/db"
 	dbtenant "github.com/wisbric/bookowl/internal/db/tenant"
-	"github.com/wisbric/core/pkg/httpserver"
 	"github.com/wisbric/bookowl/pkg/storage"
 	"github.com/wisbric/bookowl/pkg/tenant"
 )
@@ -57,16 +58,16 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	file, header, err := r.FormFile("file")
 	if err != nil {
 		if err.Error() == "http: request body too large" {
-httpserver.RespondError(w, http.StatusRequestEntityTooLarge, "error", "image exceeds 10MB limit")
+			httpserver.RespondError(w, http.StatusRequestEntityTooLarge, "error", "image exceeds 10MB limit")
 			return
 		}
-httpserver.RespondError(w, http.StatusBadRequest, "error", "missing or invalid file field")
+		httpserver.RespondError(w, http.StatusBadRequest, "error", "missing or invalid file field")
 		return
 	}
 	defer func() { _ = file.Close() }()
 
 	if header.Size > maxImageSize {
-httpserver.RespondError(w, http.StatusRequestEntityTooLarge, "error", "image exceeds 10MB limit")
+		httpserver.RespondError(w, http.StatusRequestEntityTooLarge, "error", "image exceeds 10MB limit")
 		return
 	}
 
@@ -74,7 +75,7 @@ httpserver.RespondError(w, http.StatusRequestEntityTooLarge, "error", "image exc
 	buf := make([]byte, 512)
 	n, err := file.Read(buf)
 	if err != nil && err != io.EOF {
-httpserver.RespondError(w, http.StatusBadRequest, "error", "cannot read file")
+		httpserver.RespondError(w, http.StatusBadRequest, "error", "cannot read file")
 		return
 	}
 	detectedType := http.DetectContentType(buf[:n])
@@ -86,20 +87,20 @@ httpserver.RespondError(w, http.StatusBadRequest, "error", "cannot read file")
 
 	ext, ok := allowedContentTypes[detectedType]
 	if !ok {
-httpserver.RespondError(w, http.StatusUnsupportedMediaType, "error", fmt.Sprintf("unsupported content type: %s", detectedType))
+		httpserver.RespondError(w, http.StatusUnsupportedMediaType, "error", fmt.Sprintf("unsupported content type: %s", detectedType))
 		return
 	}
 
 	// Seek back to the start to include the sniffed bytes.
 	if _, err := file.Seek(0, io.SeekStart); err != nil {
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "cannot rewind file")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "cannot rewind file")
 		return
 	}
 
 	// Generate storage key.
 	t, ok := tenant.FromContext(r.Context())
 	if !ok {
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "tenant not resolved")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "tenant not resolved")
 		return
 	}
 
@@ -109,7 +110,7 @@ httpserver.RespondError(w, http.StatusInternalServerError, "error", "tenant not 
 	// Store the file.
 	if err := h.backend.Put(r.Context(), storageKey, file, header.Size, detectedType); err != nil {
 		slog.Error("storing image", "key", storageKey, "error", err)
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to store image")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to store image")
 		return
 	}
 
@@ -129,7 +130,7 @@ httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to s
 		// Best-effort cleanup of the stored file.
 		_ = h.backend.Delete(r.Context(), storageKey)
 		slog.Error("inserting storage object", "key", storageKey, "error", err)
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to save image record")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to save image record")
 		return
 	}
 
@@ -142,7 +143,7 @@ httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to s
 func (h *Handler) Serve(w http.ResponseWriter, r *http.Request) {
 	id, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -150,11 +151,11 @@ httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 	obj, err := q.GetStorageObject(r.Context(), id)
 	if err != nil {
 		if db.IsNotFound(err) {
-httpserver.RespondError(w, http.StatusNotFound, "error", "image not found")
+			httpserver.RespondError(w, http.StatusNotFound, "error", "image not found")
 			return
 		}
 		slog.Error("getting storage object", "id", id, "error", err)
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
 		return
 	}
 
@@ -165,7 +166,7 @@ httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal er
 			presigned, err := s3b.PresignedURL(r.Context(), obj.StorageKey)
 			if err != nil {
 				slog.Error("presigning S3 URL", "key", obj.StorageKey, "error", err)
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to generate image URL")
+				httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to generate image URL")
 				return
 			}
 			redirectURL = presigned
@@ -180,7 +181,7 @@ httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to g
 	reader, size, err := h.backend.Get(r.Context(), obj.StorageKey)
 	if err != nil {
 		slog.Error("reading image file", "key", obj.StorageKey, "error", err)
-httpserver.RespondError(w, http.StatusNotFound, "error", "image file not found")
+		httpserver.RespondError(w, http.StatusNotFound, "error", "image file not found")
 		return
 	}
 	defer func() { _ = reader.Close() }()
@@ -197,7 +198,7 @@ httpserver.RespondError(w, http.StatusNotFound, "error", "image file not found")
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	id, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -205,11 +206,11 @@ httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 	obj, err := q.GetStorageObject(r.Context(), id)
 	if err != nil {
 		if db.IsNotFound(err) {
-httpserver.RespondError(w, http.StatusNotFound, "error", "image not found")
+			httpserver.RespondError(w, http.StatusNotFound, "error", "image not found")
 			return
 		}
 		slog.Error("getting storage object for delete", "id", id, "error", err)
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
 		return
 	}
 
@@ -221,7 +222,7 @@ httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal er
 	// Delete the DB record (cascades to document_images).
 	if err := q.DeleteStorageObject(r.Context(), id); err != nil {
 		slog.Error("deleting storage object record", "id", id, "error", err)
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to delete image record")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to delete image record")
 		return
 	}
 
@@ -244,9 +245,9 @@ func extractImagesRecursive(data []byte, ids *[]uuid.UUID) {
 	// This is safe because we only extract UUIDs from known URL patterns.
 	// But for correctness, let's use proper JSON parsing.
 	type node struct {
-		Type    string          `json:"type"`
-		Attrs   map[string]any  `json:"attrs,omitempty"`
-		Content []jsonNode      `json:"content,omitempty"`
+		Type    string         `json:"type"`
+		Attrs   map[string]any `json:"attrs,omitempty"`
+		Content []jsonNode     `json:"content,omitempty"`
 	}
 	type doc = node
 
@@ -258,9 +259,9 @@ func extractImagesRecursive(data []byte, ids *[]uuid.UUID) {
 }
 
 type jsonNode struct {
-	Type    string          `json:"type"`
-	Attrs   map[string]any  `json:"attrs,omitempty"`
-	Content []jsonNode      `json:"content,omitempty"`
+	Type    string         `json:"type"`
+	Attrs   map[string]any `json:"attrs,omitempty"`
+	Content []jsonNode     `json:"content,omitempty"`
 }
 
 func walkNode(nodeType string, attrs map[string]any, children []jsonNode, ids *[]uuid.UUID) {

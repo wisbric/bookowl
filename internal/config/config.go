@@ -11,17 +11,17 @@ type Config struct {
 
 	// OIDC (BookOwl-specific)
 	OIDCClientSecret string `env:"BOOKOWL_OIDC_CLIENT_SECRET"`
-	SecretKey        string `env:"BOOKOWL_SECRET_KEY"`                     // 32-byte hex, used to encrypt OIDC client secret at rest and sign session JWTs
-	SessionTTL       string `env:"BOOKOWL_SESSION_TTL" envDefault:"12h"`   // session JWT lifetime
-	AdminPassword    string `env:"BOOKOWL_ADMIN_PASSWORD"`                 // bootstrap local admin password (if empty, random generated)
+	SecretKey        string `env:"BOOKOWL_SECRET_KEY"`                   // 32-byte hex, used to encrypt OIDC client secret at rest and sign session JWTs
+	SessionTTL       string `env:"BOOKOWL_SESSION_TTL" envDefault:"12h"` // session JWT lifetime
+	AdminPassword    string `env:"BOOKOWL_ADMIN_PASSWORD"`               // bootstrap local admin password (if empty, random generated)
 
 	// NightOwl integration
 	NightOwlAPIURL string `env:"BOOKOWL_NIGHTOWL_API_URL" envDefault:"http://localhost:8080"`
 	NightOwlAPIKey string `env:"BOOKOWL_NIGHTOWL_API_KEY"`
 
 	// URLs
-	PublicURL   string `env:"BOOKOWL_PUBLIC_URL"`     // Frontend URL for integration links (e.g. http://localhost:3001)
-	CollabWsURL string `env:"BOOKOWL_COLLAB_WS_URL"`  // WebSocket URL for collab server
+	PublicURL   string `env:"BOOKOWL_PUBLIC_URL"`    // Frontend URL for integration links (e.g. http://localhost:3001)
+	CollabWsURL string `env:"BOOKOWL_COLLAB_WS_URL"` // WebSocket URL for collab server
 
 	// Image storage.
 	StorageBackend   string `env:"BOOKOWL_STORAGE_BACKEND" envDefault:"local"`

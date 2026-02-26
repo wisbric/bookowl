@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	ErrNotFound    = errors.New("space not found")
+	ErrNotFound     = errors.New("space not found")
 	ErrSlugConflict = errors.New("space slug already exists")
 )
 
@@ -60,13 +60,13 @@ type MemberResponse struct {
 }
 
 type TreeNode struct {
-	CollectionID   uuid.UUID   `json:"collection_id"`
-	CollectionName string      `json:"collection_name"`
-	CollectionSlug string      `json:"collection_slug"`
-	ParentID       *uuid.UUID  `json:"parent_id,omitempty"`
-	Position       int32       `json:"position"`
-	Icon           *string     `json:"icon,omitempty"`
-	Documents      []TreeDoc   `json:"documents"`
+	CollectionID   uuid.UUID  `json:"collection_id"`
+	CollectionName string     `json:"collection_name"`
+	CollectionSlug string     `json:"collection_slug"`
+	ParentID       *uuid.UUID `json:"parent_id,omitempty"`
+	Position       int32      `json:"position"`
+	Icon           *string    `json:"icon,omitempty"`
+	Documents      []TreeDoc  `json:"documents"`
 }
 
 type TreeDoc struct {

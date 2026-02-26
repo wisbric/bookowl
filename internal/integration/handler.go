@@ -12,9 +12,10 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/wisbric/core/pkg/auth"
+	"github.com/wisbric/core/pkg/httpserver"
+
 	"github.com/wisbric/bookowl/internal/db"
 	dbtenant "github.com/wisbric/bookowl/internal/db/tenant"
-	"github.com/wisbric/core/pkg/httpserver"
 	"github.com/wisbric/bookowl/pkg/document"
 	"github.com/wisbric/bookowl/pkg/tenant"
 )
@@ -44,7 +45,7 @@ func requireAdmin(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		identity := auth.FromContext(r.Context())
 		if identity == nil || identity.Role != "admin" {
-httpserver.RespondError(w, http.StatusForbidden, "error", "admin role required")
+			httpserver.RespondError(w, http.StatusForbidden, "error", "admin role required")
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -84,8 +85,8 @@ type SearchResultItem struct {
 // --- Post-mortem types ---
 
 type PostMortemRequest struct {
-	Title     string            `json:"title"`
-	SpaceSlug string            `json:"space_slug"`
+	Title     string             `json:"title"`
+	SpaceSlug string             `json:"space_slug"`
 	Incident  PostMortemIncident `json:"incident"`
 }
 
@@ -110,7 +111,7 @@ type PostMortemResponse struct {
 
 func (h *Handler) ListRunbooks(w http.ResponseWriter, r *http.Request) {
 	q := dbtenant.New(tenant.ConnFromContext(r.Context()))
-	pg , _ := httpserver.ParseOffsetParams(r)
+	pg, _ := httpserver.ParseOffsetParams(r)
 
 	query := r.URL.Query().Get("q")
 
@@ -122,7 +123,7 @@ func (h *Handler) ListRunbooks(w http.ResponseWriter, r *http.Request) {
 		})
 		if err != nil {
 			slog.Error("searching runbooks", "error", err)
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "search failed")
+			httpserver.RespondError(w, http.StatusInternalServerError, "error", "search failed")
 			return
 		}
 		items := make([]RunbookListItem, len(rows))
@@ -148,7 +149,7 @@ httpserver.RespondError(w, http.StatusInternalServerError, "error", "search fail
 	total, err := q.CountRunbooks(r.Context())
 	if err != nil {
 		slog.Error("counting runbooks", "error", err)
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
 		return
 	}
 
@@ -158,7 +159,7 @@ httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal er
 	})
 	if err != nil {
 		slog.Error("listing runbooks", "error", err)
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
 		return
 	}
 
@@ -184,7 +185,7 @@ httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal er
 func (h *Handler) GetRunbook(w http.ResponseWriter, r *http.Request) {
 	id, err := httpserver.URLParamUUID(r, "id")
 	if err != nil {
-httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 		return
 	}
 
@@ -192,11 +193,11 @@ httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
 	row, err := q.GetRunbookWithSpace(r.Context(), id)
 	if err != nil {
 		if db.IsNotFound(err) {
-httpserver.RespondError(w, http.StatusNotFound, "error", "runbook not found")
+			httpserver.RespondError(w, http.StatusNotFound, "error", "runbook not found")
 			return
 		}
 		slog.Error("getting runbook", "id", id, "error", err)
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
 		return
 	}
 
@@ -219,7 +220,7 @@ func (h *Handler) CreatePostMortem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.Title == "" || req.SpaceSlug == "" {
-httpserver.RespondError(w, http.StatusBadRequest, "error", "title and space_slug are required")
+		httpserver.RespondError(w, http.StatusBadRequest, "error", "title and space_slug are required")
 		return
 	}
 
@@ -232,7 +233,7 @@ httpserver.RespondError(w, http.StatusBadRequest, "error", "title and space_slug
 	if err != nil {
 		if !db.IsNotFound(err) {
 			slog.Error("looking up space for post-mortem", "slug", req.SpaceSlug, "error", err)
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
+			httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
 			return
 		}
 		// Create the space.
@@ -243,7 +244,7 @@ httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal er
 		})
 		if err != nil {
 			slog.Error("creating space for post-mortem", "slug", req.SpaceSlug, "error", err)
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to create space")
+			httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to create space")
 			return
 		}
 	}
@@ -270,7 +271,7 @@ httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to c
 	})
 	if err != nil {
 		slog.Error("creating post-mortem document", "error", err)
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to create post-mortem")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to create post-mortem")
 		return
 	}
 
@@ -284,11 +285,11 @@ httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to c
 func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q")
 	if query == "" {
-httpserver.RespondError(w, http.StatusBadRequest, "error", "query parameter 'q' is required")
+		httpserver.RespondError(w, http.StatusBadRequest, "error", "query parameter 'q' is required")
 		return
 	}
 
-	pg , _ := httpserver.ParseOffsetParams(r)
+	pg, _ := httpserver.ParseOffsetParams(r)
 	q := dbtenant.New(tenant.ConnFromContext(r.Context()))
 
 	rows, err := q.SearchRunbooks(r.Context(), dbtenant.SearchRunbooksParams{
@@ -298,7 +299,7 @@ httpserver.RespondError(w, http.StatusBadRequest, "error", "query parameter 'q' 
 	})
 	if err != nil {
 		slog.Error("integration search failed", "error", err)
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "search failed")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "search failed")
 		return
 	}
 

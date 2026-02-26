@@ -14,16 +14,17 @@ import (
 
 	"encoding/json"
 
-	"github.com/wisbric/bookowl/internal/admin"
 	"github.com/wisbric/core/pkg/auth"
+	"github.com/wisbric/core/pkg/httpserver"
+	coretelemetry "github.com/wisbric/core/pkg/telemetry"
+	"github.com/wisbric/core/pkg/version"
+
+	"github.com/wisbric/bookowl/internal/admin"
 	"github.com/wisbric/bookowl/internal/authadapter"
 	"github.com/wisbric/bookowl/internal/config"
 	dbtenant "github.com/wisbric/bookowl/internal/db/tenant"
-	"github.com/wisbric/core/pkg/httpserver"
 	"github.com/wisbric/bookowl/internal/integration"
 	"github.com/wisbric/bookowl/internal/platform"
-	coretelemetry "github.com/wisbric/core/pkg/telemetry"
-	"github.com/wisbric/core/pkg/version"
 	"github.com/wisbric/bookowl/pkg/collection"
 	"github.com/wisbric/bookowl/pkg/comment"
 	"github.com/wisbric/bookowl/pkg/document"
@@ -38,15 +39,15 @@ import (
 )
 
 type App struct {
-	cfg          config.Config
-	plat         *platform.Platform
-	router       *chi.Mux
-	metricsReg   *prometheus.Registry
+	cfg        config.Config
+	plat       *platform.Platform
+	router     *chi.Mux
+	metricsReg *prometheus.Registry
 	backend    storage.Backend
 	sessionMgr *auth.SessionManager
-	authStore    auth.Storage
-	startedAt    time.Time
-	stopCh       chan struct{}
+	authStore  auth.Storage
+	startedAt  time.Time
+	stopCh     chan struct{}
 }
 
 func New(ctx context.Context, cfg config.Config) (*App, error) {
@@ -90,14 +91,14 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	metricsReg := coretelemetry.NewMetricsRegistry()
 
 	app := &App{
-		cfg:          cfg,
-		plat:         plat,
-		metricsReg:   metricsReg,
+		cfg:        cfg,
+		plat:       plat,
+		metricsReg: metricsReg,
 		backend:    backend,
 		sessionMgr: sessionMgr,
-		authStore:    authStore,
-		startedAt:    time.Now(),
-		stopCh:       make(chan struct{}),
+		authStore:  authStore,
+		startedAt:  time.Now(),
+		stopCh:     make(chan struct{}),
 	}
 	app.setupRouter()
 	return app, nil
@@ -107,13 +108,13 @@ func initStorageBackend(ctx context.Context, cfg config.Config) (storage.Backend
 	switch cfg.StorageBackend {
 	case "s3":
 		return storage.NewS3Backend(ctx, storage.S3Config{
-			Endpoint:       cfg.StorageS3Endpoint,
-			Bucket:         cfg.StorageS3Bucket,
-			Region:         cfg.StorageS3Region,
-			AccessKeyID:    cfg.StorageS3AccessKeyID,
+			Endpoint:        cfg.StorageS3Endpoint,
+			Bucket:          cfg.StorageS3Bucket,
+			Region:          cfg.StorageS3Region,
+			AccessKeyID:     cfg.StorageS3AccessKeyID,
 			SecretAccessKey: cfg.StorageS3SecretAccessKey,
-			PublicURL:      cfg.StorageS3PublicURL,
-			UsePresign:     cfg.StorageS3UsePresign,
+			PublicURL:       cfg.StorageS3PublicURL,
+			UsePresign:      cfg.StorageS3UsePresign,
 		})
 	default:
 		return storage.NewLocalBackend(cfg.StorageLocalPath), nil
@@ -138,7 +139,7 @@ func (a *App) setupRouter() {
 	})
 	r.Get("/readyz", func(w http.ResponseWriter, r *http.Request) {
 		if err := a.plat.DB.Ping(r.Context()); err != nil {
-httpserver.RespondError(w, http.StatusServiceUnavailable, "error", "database unavailable")
+			httpserver.RespondError(w, http.StatusServiceUnavailable, "error", "database unavailable")
 			return
 		}
 		httpserver.Respond(w, http.StatusOK, map[string]string{"status": "ready"})

@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	ErrNotFound    = errors.New("collection not found")
+	ErrNotFound     = errors.New("collection not found")
 	ErrSlugConflict = errors.New("collection slug already exists in this space")
 )
 

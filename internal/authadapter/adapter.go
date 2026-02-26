@@ -10,6 +10,7 @@ import (
 
 	"github.com/wisbric/core/pkg/auth"
 	"github.com/wisbric/core/pkg/authadapter"
+
 	dbglobal "github.com/wisbric/bookowl/internal/db/global"
 	dbtenant "github.com/wisbric/bookowl/internal/db/tenant"
 )

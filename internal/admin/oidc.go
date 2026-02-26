@@ -14,8 +14,9 @@ import (
 	"strings"
 	"time"
 
-	dbglobal "github.com/wisbric/bookowl/internal/db/global"
 	"github.com/wisbric/core/pkg/httpserver"
+
+	dbglobal "github.com/wisbric/bookowl/internal/db/global"
 	"github.com/wisbric/bookowl/pkg/tenant"
 )
 
@@ -74,12 +75,12 @@ type OIDCTestResponse struct {
 
 // OIDCTestDetails contains per-check results for an OIDC connection test.
 type OIDCTestDetails struct {
-	DiscoveryOK        bool     `json:"discovery_ok"`
-	JWKSURI            string   `json:"jwks_uri,omitempty"`
-	JWKSOK             bool     `json:"jwks_ok"`
-	ClientCredentialsOK bool    `json:"client_credentials_ok"`
-	SupportedScopes    []string `json:"supported_scopes,omitempty"`
-	HasGroupsScope     bool     `json:"has_groups_scope"`
+	DiscoveryOK         bool     `json:"discovery_ok"`
+	JWKSURI             string   `json:"jwks_uri,omitempty"`
+	JWKSOK              bool     `json:"jwks_ok"`
+	ClientCredentialsOK bool     `json:"client_credentials_ok"`
+	SupportedScopes     []string `json:"supported_scopes,omitempty"`
+	HasGroupsScope      bool     `json:"has_groups_scope"`
 }
 
 // encryptSecret encrypts a plaintext secret using AES-256-GCM.
@@ -201,7 +202,7 @@ func saveOIDCConfig(existing json.RawMessage, oidcCfg OIDCConfig) (json.RawMessa
 func (h *Handler) GetOIDCConfig(w http.ResponseWriter, r *http.Request) {
 	t, ok := tenant.FromContext(r.Context())
 	if !ok {
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "tenant not resolved")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "tenant not resolved")
 		return
 	}
 
@@ -230,7 +231,7 @@ func (h *Handler) UpdateOIDCConfig(w http.ResponseWriter, r *http.Request) {
 
 	t, ok := tenant.FromContext(r.Context())
 	if !ok {
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "tenant not resolved")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "tenant not resolved")
 		return
 	}
 
@@ -240,13 +241,13 @@ httpserver.RespondError(w, http.StatusInternalServerError, "error", "tenant not 
 	clientSecret := existing.ClientSecret
 	if req.ClientSecret != "" {
 		if h.secretKey == "" {
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "BOOKOWL_SECRET_KEY not configured")
+			httpserver.RespondError(w, http.StatusInternalServerError, "error", "BOOKOWL_SECRET_KEY not configured")
 			return
 		}
 		encrypted, err := encryptSecret(req.ClientSecret, h.secretKey)
 		if err != nil {
 			slog.Error("encrypting client secret", "error", err)
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to encrypt client secret")
+			httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to encrypt client secret")
 			return
 		}
 		clientSecret = encrypted
@@ -266,7 +267,7 @@ httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to e
 
 	configJSON, err := saveOIDCConfig(t.Config, newCfg)
 	if err != nil {
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to serialize config")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to serialize config")
 		return
 	}
 
@@ -277,7 +278,7 @@ httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to s
 	})
 	if err != nil {
 		slog.Error("updating OIDC config", "tenant", t.Slug, "error", err)
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to update config")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "failed to update config")
 		return
 	}
 
@@ -320,7 +321,7 @@ func (h *Handler) TestOIDCConfig(w http.ResponseWriter, r *http.Request) {
 
 	t, ok := tenant.FromContext(r.Context())
 	if !ok {
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "tenant not resolved")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "tenant not resolved")
 		return
 	}
 
@@ -389,11 +390,11 @@ func testOIDCConnection(ctx context.Context, issuerURL, clientID, clientSecret s
 	}
 
 	var discovery struct {
-		Issuer                string   `json:"issuer"`
-		JWKSURI               string   `json:"jwks_uri"`
-		TokenEndpoint         string   `json:"token_endpoint"`
-		ScopesSupported       []string `json:"scopes_supported"`
-		GrantTypesSupported   []string `json:"grant_types_supported"`
+		Issuer              string   `json:"issuer"`
+		JWKSURI             string   `json:"jwks_uri"`
+		TokenEndpoint       string   `json:"token_endpoint"`
+		ScopesSupported     []string `json:"scopes_supported"`
+		GrantTypesSupported []string `json:"grant_types_supported"`
 	}
 	if err := json.NewDecoder(discoveryResp.Body).Decode(&discovery); err != nil {
 		resp.Error = "failed to parse discovery document"

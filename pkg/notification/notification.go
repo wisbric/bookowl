@@ -16,13 +16,13 @@ type AuthorInfo struct {
 }
 
 type NotificationResponse struct {
-	ID         uuid.UUID  `json:"id"`
-	Type       string     `json:"type"`
-	DocumentID *uuid.UUID `json:"document_id"`
-	CommentID  *uuid.UUID `json:"comment_id"`
+	ID         uuid.UUID   `json:"id"`
+	Type       string      `json:"type"`
+	DocumentID *uuid.UUID  `json:"document_id"`
+	CommentID  *uuid.UUID  `json:"comment_id"`
 	Actor      *AuthorInfo `json:"actor"`
-	IsRead     bool       `json:"is_read"`
-	CreatedAt  time.Time  `json:"created_at"`
+	IsRead     bool        `json:"is_read"`
+	CreatedAt  time.Time   `json:"created_at"`
 }
 
 type CountResponse struct {

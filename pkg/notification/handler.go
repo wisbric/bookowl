@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/wisbric/core/pkg/httpserver"
+
 	"github.com/wisbric/bookowl/pkg/tenant"
 )
 
@@ -34,21 +35,21 @@ func (h *Handler) UnreadCount(w http.ResponseWriter, r *http.Request) {
 	count, err := h.svc.UnreadCount(r.Context(), store, userID)
 	if err != nil {
 		slog.Error("notification unread count error", "error", err)
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
 		return
 	}
 	httpserver.Respond(w, http.StatusOK, CountResponse{Count: count})
 }
 
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
-	pg , _ := httpserver.ParseOffsetParams(r)
+	pg, _ := httpserver.ParseOffsetParams(r)
 	store := NewStore(tenant.ConnFromContext(r.Context()))
 	userID := userIDFromContext(r)
 
 	notifications, err := h.svc.List(r.Context(), store, userID, int32(pg.PageSize), int32(pg.Offset))
 	if err != nil {
 		slog.Error("notification list error", "error", err)
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
+		httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
 		return
 	}
 	httpserver.Respond(w, http.StatusOK, notifications)
@@ -67,13 +68,13 @@ func (h *Handler) MarkRead(w http.ResponseWriter, r *http.Request) {
 	if req.All {
 		if err := h.svc.MarkAllRead(r.Context(), store, userID); err != nil {
 			slog.Error("notification mark all read error", "error", err)
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
+			httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
 			return
 		}
 	} else if len(req.IDs) > 0 {
 		if err := h.svc.MarkRead(r.Context(), store, userID, req.IDs); err != nil {
 			slog.Error("notification mark read error", "error", err)
-httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
+			httpserver.RespondError(w, http.StatusInternalServerError, "error", "internal error")
 			return
 		}
 	}
