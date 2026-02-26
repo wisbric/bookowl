@@ -25,6 +25,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: wisbric/core
+          path: ../core
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25"
