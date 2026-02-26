@@ -81,6 +81,11 @@ The API runs on `http://localhost:8081` and the frontend on `http://localhost:30
 
 Navigate to `http://localhost:3001/login` to sign in with the local admin account. In production, users authenticate via OIDC (Keycloak).
 
+### Configuration Notes
+
+- `BOOKOWL_SECRET_KEY` is required for cookie sessions and OIDC secret encryption (must be set in production).
+- Dev-only auth shortcuts (like `X-Tenant-Slug`) are only enabled when `DEV_MODE=true`.
+
 ## Project Structure
 
 ```
