@@ -12,4 +12,5 @@ RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor \
 FROM gcr.io/distroless/static-debian12
 COPY --from=build /bookowl /bookowl
 COPY --from=build /app/migrations /migrations
+COPY --from=build /app/internal/seed/templates /internal/seed/templates
 ENTRYPOINT ["/bookowl"]

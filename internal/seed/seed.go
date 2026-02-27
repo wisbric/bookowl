@@ -76,7 +76,7 @@ func Run(ctx context.Context, cfg config.Config) error {
 	}
 
 	if err := ensureSystemTemplates(ctx, q); err != nil {
-		return fmt.Errorf("ensuring system templates: %w", err)
+		slog.Warn("skipping system templates (non-fatal)", "error", err)
 	}
 
 	slog.Info("seed complete", "tenant", tenantSlug, "users", len(users))
