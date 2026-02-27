@@ -7,8 +7,9 @@ metadata:
 data:
   APP_MODE: api
   APP_PORT: {{ .Values.api.port | quote }}
-  {{- if .Values.oidc.issuerUrl }}
-  OIDC_ISSUER: {{ .Values.oidc.issuerUrl | quote }}
+  {{- $oidcIssuer := .Values.oidc.issuerUrl | default (dig "oidc" "issuerUrl" "" (.Values.global | default dict)) }}
+  {{- if $oidcIssuer }}
+  OIDC_ISSUER: {{ $oidcIssuer | quote }}
   {{- end }}
   {{- if .Values.oidc.clientId }}
   OIDC_CLIENT_ID: {{ .Values.oidc.clientId | quote }}
