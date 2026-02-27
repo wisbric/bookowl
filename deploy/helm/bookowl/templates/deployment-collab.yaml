@@ -36,7 +36,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ include "bookowl.fullname" . }}
-                  key: BOOKOWL_DB_URL
+                  key: DATABASE_URL
             - name: REDIS_HOST
               value: {{ .Values.redis.host | default "" | quote }}
             - name: REDIS_PORT

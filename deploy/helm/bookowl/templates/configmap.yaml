@@ -5,13 +5,13 @@ metadata:
   labels:
     {{- include "bookowl.labels" . | nindent 4 }}
 data:
-  BOOKOWL_MODE: api
-  BOOKOWL_PORT: {{ .Values.api.port | quote }}
+  APP_MODE: api
+  APP_PORT: {{ .Values.api.port | quote }}
   {{- if .Values.oidc.issuerUrl }}
-  BOOKOWL_OIDC_ISSUER_URL: {{ .Values.oidc.issuerUrl | quote }}
+  OIDC_ISSUER: {{ .Values.oidc.issuerUrl | quote }}
   {{- end }}
   {{- if .Values.oidc.clientId }}
-  BOOKOWL_OIDC_CLIENT_ID: {{ .Values.oidc.clientId | quote }}
+  OIDC_CLIENT_ID: {{ .Values.oidc.clientId | quote }}
   {{- end }}
   {{- if .Values.nightowl.apiUrl }}
   BOOKOWL_NIGHTOWL_API_URL: {{ .Values.nightowl.apiUrl | quote }}
