@@ -102,3 +102,5 @@ serviceAccount:
 
 imagePullSecrets: []
 extraEnv: []
+extraVolumes: []
+extraVolumeMounts: []
