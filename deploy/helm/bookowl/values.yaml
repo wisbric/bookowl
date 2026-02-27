@@ -42,6 +42,8 @@ redis:
 oidc:
   issuerUrl: ""
   clientId: bookowl
+  clientSecret: ""   # set via external secret
+  redirectUrl: ""    # e.g. https://bookowl.example.com/auth/oidc/callback
 
 nightowl:
   apiUrl: ""

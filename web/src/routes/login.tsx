@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/auth/auth-provider'
-import { setSessionMode } from '@/api/client'
 import { LogIn, AlertCircle, Loader2 } from 'lucide-react'
 
 export const Route = createFileRoute('/login')({
@@ -9,7 +8,7 @@ export const Route = createFileRoute('/login')({
 })
 
 function LoginPage() {
-  const { devMode, isAuthenticated, oidcEnabled, login, refreshProfile, profile } = useAuth()
+  const { devMode, isAuthenticated, oidcEnabled, refreshProfile, profile } = useAuth()
   const navigate = useNavigate()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -62,7 +61,6 @@ function LoginPage() {
       }
 
       if (res.status === 403 && data.error === 'must_change_password') {
-        setSessionMode(true)
         await refreshProfile()
         navigate({ to: '/change-password' as string })
         return
@@ -74,7 +72,6 @@ function LoginPage() {
       }
 
       // Login succeeded — session cookie is set.
-      setSessionMode(true)
       await refreshProfile()
       const params = new URLSearchParams(window.location.search)
       const returnTo = params.get('return') || '/'
@@ -103,7 +100,7 @@ function LoginPage() {
           {oidcEnabled ? (
             <>
               <button
-                onClick={() => login()}
+                onClick={() => { window.location.href = '/auth/oidc/login' }}
                 className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
               >
                 <LogIn className="h-4 w-4" />

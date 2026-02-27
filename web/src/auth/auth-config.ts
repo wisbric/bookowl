@@ -1,7 +1,5 @@
 export interface AuthConfig {
   oidc_enabled: boolean
-  oidc_authority?: string
-  oidc_client_id?: string
 }
 
 export async function fetchAuthConfig(): Promise<AuthConfig> {

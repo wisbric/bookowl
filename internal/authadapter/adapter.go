@@ -123,7 +123,7 @@ func (a *Adapter) FindLocalAdmin(ctx context.Context, username, tenantSlug strin
 	return nil, "", fmt.Errorf("local admin not found")
 }
 
-func (a *Adapter) FindOrCreateOIDCUser(ctx context.Context, tenantSlug, subject, email, role string) (*auth.UserRow, string, error) {
+func (a *Adapter) FindOrCreateOIDCUser(ctx context.Context, tenantSlug, subject, email, displayName, role string) (*auth.UserRow, string, error) {
 	t, err := a.GetTenantBySlug(ctx, tenantSlug)
 	if err != nil {
 		return nil, "", fmt.Errorf("looking up tenant %s: %w", tenantSlug, err)
@@ -146,7 +146,7 @@ func (a *Adapter) FindOrCreateOIDCUser(ctx context.Context, tenantSlug, subject,
 		user, err = tq.UpsertUser(ctx, dbtenant.UpsertUserParams{
 			ExternalID:  subject,
 			Email:       email,
-			DisplayName: email,
+			DisplayName: displayName,
 			Role:        role,
 		})
 		if err != nil {

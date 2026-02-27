@@ -6,7 +6,6 @@ import { router } from './router'
 import { AuthProvider } from './auth/auth-provider'
 import { fetchAuthConfig } from './auth/auth-config'
 import { fetchClientConfig } from './config/client-config'
-import { createUserManager } from './auth/oidc-manager'
 import './index.css'
 
 const queryClient = new QueryClient({
@@ -20,22 +19,10 @@ const queryClient = new QueryClient({
 
 async function bootstrap() {
   const [config] = await Promise.all([fetchAuthConfig(), fetchClientConfig()])
-  const userManager = createUserManager(config)
-
-  // Handle OIDC callback before rendering the app.
-  if (userManager && window.location.pathname === '/callback') {
-    try {
-      await userManager.signinRedirectCallback()
-      window.history.replaceState({}, '', '/')
-    } catch (err) {
-      console.error('OIDC callback failed:', err)
-      window.history.replaceState({}, '', '/')
-    }
-  }
 
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
-      <AuthProvider userManager={userManager} oidcEnabled={config.oidc_enabled}>
+      <AuthProvider oidcEnabled={config.oidc_enabled}>
         <QueryClientProvider client={queryClient}>
           <RouterProvider router={router} />
         </QueryClientProvider>

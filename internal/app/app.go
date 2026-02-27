@@ -14,6 +14,8 @@ import (
 
 	"encoding/json"
 
+	"golang.org/x/oauth2"
+
 	"github.com/wisbric/core/pkg/auth"
 	"github.com/wisbric/core/pkg/httpserver"
 	coretelemetry "github.com/wisbric/core/pkg/telemetry"
@@ -45,6 +47,7 @@ type App struct {
 	metricsReg *prometheus.Registry
 	backend    storage.Backend
 	sessionMgr *auth.SessionManager
+	oidcAuth   *auth.OIDCAuthenticator
 	authStore  auth.Storage
 	startedAt  time.Time
 	stopCh     chan struct{}
@@ -87,6 +90,19 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	// Auth storage adapter.
 	authStore := authadapter.New(plat.DB)
 
+	// OIDC authenticator (optional — nil if not configured).
+	var oidcAuth *auth.OIDCAuthenticator
+	if cfg.OIDCIssuerURL != "" && cfg.OIDCClientID != "" {
+		oidcAuth, err = auth.NewOIDCAuthenticator(ctx, cfg.OIDCIssuerURL, cfg.OIDCClientID)
+		if err != nil {
+			plat.Close()
+			return nil, fmt.Errorf("initializing OIDC authenticator: %w", err)
+		}
+		slog.Info("OIDC authentication enabled", "issuer", cfg.OIDCIssuerURL)
+	} else {
+		slog.Info("OIDC authentication disabled (OIDC_ISSUER not set)")
+	}
+
 	// Metrics registry (no BookOwl-specific metrics yet — shared only).
 	metricsReg := coretelemetry.NewMetricsRegistry()
 
@@ -96,6 +112,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 		metricsReg: metricsReg,
 		backend:    backend,
 		sessionMgr: sessionMgr,
+		oidcAuth:   oidcAuth,
 		authStore:  authStore,
 		startedAt:  time.Now(),
 		stopCh:     make(chan struct{}),
@@ -158,14 +175,9 @@ func (a *App) setupRouter() {
 
 	// Auth config endpoint (no auth required — frontend uses this to decide OIDC vs dev mode).
 	r.Get("/api/v1/auth/config", func(w http.ResponseWriter, r *http.Request) {
-		resp := map[string]any{
-			"oidc_enabled": a.cfg.OIDCIssuerURL != "",
-		}
-		if a.cfg.OIDCIssuerURL != "" {
-			resp["oidc_authority"] = a.cfg.OIDCIssuerURL
-			resp["oidc_client_id"] = a.cfg.OIDCClientID
-		}
-		httpserver.Respond(w, http.StatusOK, resp)
+		httpserver.Respond(w, http.StatusOK, map[string]any{
+			"oidc_enabled": a.oidcAuth != nil,
+		})
 	})
 
 	// Client config endpoint (public, no auth required — frontend fetches runtime config).
@@ -185,14 +197,31 @@ func (a *App) setupRouter() {
 		r.Post("/auth/change-password", localAdminH.HandleChangePassword)
 		r.Get("/auth/config", localAdminH.HandleAuthConfig)
 
-		loginH := auth.NewLoginHandler(a.sessionMgr, a.authStore, slog.Default(), a.cfg.OIDCIssuerURL != "", rateLimiter)
+		loginH := auth.NewLoginHandler(a.sessionMgr, a.authStore, slog.Default(), a.oidcAuth != nil, rateLimiter)
 		r.Post("/auth/login", loginH.HandleLogin)
 		r.Get("/auth/me", loginH.HandleMe)
 		r.Post("/auth/logout", loginH.HandleLogout)
+
+		// OIDC Authorization Code flow (only if OIDC is configured with a client secret).
+		if a.oidcAuth != nil && a.cfg.OIDCClientSecret != "" {
+			oauth2Cfg := &oauth2.Config{
+				ClientID:     a.cfg.OIDCClientID,
+				ClientSecret: a.cfg.OIDCClientSecret,
+				RedirectURL:  a.cfg.OIDCRedirectURL,
+				Endpoint:     a.oidcAuth.Endpoint(),
+				Scopes:       []string{"openid", "email", "profile"},
+			}
+
+			oidcFlow := auth.NewOIDCFlowHandler(oauth2Cfg, a.oidcAuth, a.sessionMgr, a.authStore, a.plat.Redis, slog.Default())
+			oidcFlow.SuccessURL = "/"
+			r.Get("/auth/oidc/login", oidcFlow.HandleLogin)
+			r.Get("/auth/oidc/callback", oidcFlow.HandleCallback)
+			slog.Info("OIDC Authorization Code flow enabled", "redirect_url", a.cfg.OIDCRedirectURL)
+		}
 	}
 
 	// Auth + tenant middleware.
-	authMW := auth.Middleware(a.sessionMgr, nil, nil, a.authStore, slog.Default(), a.cfg.DevMode)
+	authMW := auth.Middleware(a.sessionMgr, a.oidcAuth, nil, a.authStore, slog.Default(), a.cfg.DevMode)
 	tenantMW := tenant.NewResolveMiddleware(a.plat.DB, a.plat.DB)
 
 	// Domain services.

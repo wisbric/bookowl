@@ -1,18 +1,5 @@
 const API_BASE = '/api/v1'
 
-type TokenProvider = () => Promise<string | null>
-
-let _tokenProvider: TokenProvider | null = null
-let _sessionMode = false
-
-export function setTokenProvider(provider: TokenProvider) {
-  _tokenProvider = provider
-}
-
-export function setSessionMode(enabled: boolean) {
-  _sessionMode = enabled
-}
-
 class ApiError extends Error {
   constructor(
     public status: number,
@@ -29,15 +16,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     ...(init?.headers as Record<string, string>),
   }
 
-  // Attach auth: Bearer token (OIDC), session cookie (automatic), or dev fallback.
-  if (_sessionMode) {
-    // Cookie-based auth — browser sends wisbric_session cookie automatically.
-  } else if (_tokenProvider) {
-    const token = await _tokenProvider()
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`
-    }
-  } else {
+  // Dev mode fallback: no session cookie available, use dev header.
+  if (import.meta.env.DEV && !document.cookie.includes('wisbric_session')) {
     headers['X-Tenant-Slug'] = 'acme'
   }
 
@@ -84,15 +64,8 @@ async function upload<T>(path: string, file: File): Promise<T> {
     'Accept': 'application/json',
   }
 
-  // Attach auth: Bearer token (OIDC), session cookie (automatic), or dev fallback.
-  if (_sessionMode) {
-    // Cookie-based auth — browser sends wisbric_session cookie automatically.
-  } else if (_tokenProvider) {
-    const token = await _tokenProvider()
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`
-    }
-  } else {
+  // Dev mode fallback.
+  if (import.meta.env.DEV && !document.cookie.includes('wisbric_session')) {
     headers['X-Tenant-Slug'] = 'acme'
   }
 

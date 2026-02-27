@@ -11,6 +11,7 @@ type Config struct {
 
 	// OIDC (BookOwl-specific)
 	OIDCClientSecret string `env:"BOOKOWL_OIDC_CLIENT_SECRET"`
+	OIDCRedirectURL  string `env:"BOOKOWL_OIDC_REDIRECT_URL" envDefault:"http://localhost:3001/auth/oidc/callback"`
 	SecretKey        string `env:"BOOKOWL_SECRET_KEY"`                   // 32-byte hex, used to encrypt OIDC client secret at rest and sign session JWTs
 	SessionTTL       string `env:"BOOKOWL_SESSION_TTL" envDefault:"12h"` // session JWT lifetime
 	AdminPassword    string `env:"BOOKOWL_ADMIN_PASSWORD"`               // bootstrap local admin password (if empty, random generated)
