@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { Search, Plus, Settings, Info, ExternalLink, Sun, Moon, LogOut, User, Key, LayoutTemplate, PanelLeftClose, PanelLeftOpen, Ticket } from 'lucide-react'
+import { Search, Plus, Settings, Info, ExternalLink, Sun, Moon, LogOut, User, Key, LayoutTemplate, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { api } from '@/api/client'
 import type { Space } from '@/api/client'
