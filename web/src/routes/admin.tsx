@@ -61,6 +61,18 @@ function NightOwlConfigSection() {
     queryFn: () => api.get<AdminConfig>('/admin/config'),
   })
 
+  const { data: authConfig } = useQuery({
+    queryKey: ['auth-config'],
+    queryFn: async () => {
+      const res = await fetch('/api/v1/auth/config')
+      if (!res.ok) return {}
+      return res.json()
+    },
+    staleTime: Infinity,
+  })
+
+  const nightowlApiPlaceholder = authConfig?.nightowl_api_url || 'http://owl-nightowl-api:8080'
+
   const [url, setUrl] = useState('')
   const [apiKey, setApiKey] = useState('')
 
@@ -105,7 +117,7 @@ function NightOwlConfigSection() {
             type="text"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://nightowl.example.com/api/v1"
+            placeholder={nightowlApiPlaceholder}
             className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
           />
         </div>

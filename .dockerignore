@@ -1,0 +1,10 @@
+web/node_modules
+web/dist
+web/.vite
+collab/node_modules
+.claude
+.git
+bin
+coverage.out
+go.work
+go.work.sum

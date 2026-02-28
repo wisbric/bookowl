@@ -50,6 +50,10 @@ oidc:
 nightowl:
   apiUrl: ""
   apiKey: ""   # set via external secret
+  url: ""      # NightOwl web URL for sidebar link
+
+ticketowl:
+  url: ""      # TicketOwl web URL for sidebar link
 
 collab:
   enabled: true

@@ -20,3 +20,9 @@ data:
   {{- if .Values.collab.wsUrl }}
   BOOKOWL_COLLAB_WS_URL: {{ .Values.collab.wsUrl | quote }}
   {{- end }}
+  {{- if .Values.nightowl.url }}
+  BOOKOWL_NIGHTOWL_URL: {{ .Values.nightowl.url | quote }}
+  {{- end }}
+  {{- if .Values.ticketowl.url }}
+  BOOKOWL_TICKETOWL_URL: {{ .Values.ticketowl.url | quote }}
+  {{- end }}

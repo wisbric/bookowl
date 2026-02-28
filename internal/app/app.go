@@ -175,9 +175,19 @@ func (a *App) setupRouter() {
 
 	// Auth config endpoint (no auth required — frontend uses this to decide OIDC vs dev mode).
 	r.Get("/api/v1/auth/config", func(w http.ResponseWriter, r *http.Request) {
-		httpserver.Respond(w, http.StatusOK, map[string]any{
+		resp := map[string]any{
 			"oidc_enabled": a.oidcAuth != nil,
-		})
+		}
+		if a.cfg.NightOwlURL != "" {
+			resp["nightowl_url"] = a.cfg.NightOwlURL
+		}
+		if a.cfg.TicketOwlURL != "" {
+			resp["ticketowl_url"] = a.cfg.TicketOwlURL
+		}
+		if a.cfg.NightOwlAPIURL != "" {
+			resp["nightowl_api_url"] = a.cfg.NightOwlAPIURL
+		}
+		httpserver.Respond(w, http.StatusOK, resp)
 	})
 
 	// Client config endpoint (public, no auth required — frontend fetches runtime config).

@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { Search, Plus, Settings, Info, ExternalLink, Sun, Moon, LogOut, User, Key, LayoutTemplate, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { Search, Plus, Settings, Info, ExternalLink, Sun, Moon, LogOut, User, Key, LayoutTemplate, PanelLeftClose, PanelLeftOpen, Ticket } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { api } from '@/api/client'
 import type { Space } from '@/api/client'
@@ -25,6 +25,16 @@ export function Sidebar({ onOpenPalette, collapsed, onToggle }: SidebarProps) {
   const { data: spaces } = useQuery({
     queryKey: ['spaces'],
     queryFn: () => api.get<Space[]>('/spaces'),
+  })
+
+  const { data: authConfig } = useQuery({
+    queryKey: ['auth-config'],
+    queryFn: async () => {
+      const res = await fetch('/api/v1/auth/config')
+      if (!res.ok) return {}
+      return res.json()
+    },
+    staleTime: Infinity,
   })
 
   useEffect(() => {
@@ -130,6 +140,22 @@ export function Sidebar({ onOpenPalette, collapsed, onToggle }: SidebarProps) {
                         <Key className="h-4 w-4" /> Personal tokens
                       </Link>
                     </div>
+                    {(authConfig?.nightowl_url || authConfig?.ticketowl_url) && (
+                      <div className="border-t border-border py-1">
+                        {authConfig.nightowl_url && (
+                          <a href={authConfig.nightowl_url}
+                            className="flex items-center gap-2 px-3 py-1.5 text-sm text-sidebar-foreground transition-colors hover:bg-muted">
+                            <ExternalLink className="h-4 w-4" /> NightOwl
+                          </a>
+                        )}
+                        {authConfig.ticketowl_url && (
+                          <a href={authConfig.ticketowl_url}
+                            className="flex items-center gap-2 px-3 py-1.5 text-sm text-sidebar-foreground transition-colors hover:bg-muted">
+                            <ExternalLink className="h-4 w-4" /> TicketOwl
+                          </a>
+                        )}
+                      </div>
+                    )}
                     <div className="border-t border-border py-1">
                       <button onClick={() => { setShowUserMenu(false); logout() }}
                         className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-red-400 transition-colors hover:bg-muted">
@@ -307,15 +333,28 @@ export function Sidebar({ onOpenPalette, collapsed, onToggle }: SidebarProps) {
                     </button>
                   </div>
 
-                  <div className="border-t border-border py-1">
-                    <a
-                      href="#"
-                      className="flex items-center gap-2 px-3 py-1.5 text-sm text-sidebar-foreground transition-colors hover:bg-muted"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                      NightOwl
-                    </a>
-                  </div>
+                  {(authConfig?.nightowl_url || authConfig?.ticketowl_url) && (
+                    <div className="border-t border-border py-1">
+                      {authConfig.nightowl_url && (
+                        <a
+                          href={authConfig.nightowl_url}
+                          className="flex items-center gap-2 px-3 py-1.5 text-sm text-sidebar-foreground transition-colors hover:bg-muted"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                          NightOwl
+                        </a>
+                      )}
+                      {authConfig.ticketowl_url && (
+                        <a
+                          href={authConfig.ticketowl_url}
+                          className="flex items-center gap-2 px-3 py-1.5 text-sm text-sidebar-foreground transition-colors hover:bg-muted"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                          TicketOwl
+                        </a>
+                      )}
+                    </div>
+                  )}
 
                   <div className="border-t border-border py-1">
                     <button
