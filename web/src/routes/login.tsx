@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/auth/auth-provider'
-import { LogIn, AlertCircle, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 
 export const Route = createFileRoute('/login')({
   component: LoginPage,
@@ -84,105 +84,109 @@ function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md space-y-8">
-        {/* Header */}
-        <div className="text-center">
-          <img src="/owl.png" alt="BookOwl" className="mx-auto mb-4 h-12 brightness-0 dark:brightness-100" />
-          <h1 className="text-2xl font-bold text-foreground">BookOwl</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Where your operational knowledge lives.
-          </p>
+    <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="w-full max-w-sm">
+        <div className="mb-8 flex flex-col items-center gap-3">
+          <img src="/owl.png" alt="BookOwl" className="h-16 w-auto" />
+          <h1 className="text-2xl font-bold tracking-tight">BookOwl</h1>
+          <p className="text-sm text-muted-foreground">Sign in to continue</p>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-          {/* OIDC button */}
-          {oidcEnabled ? (
-            <>
-              <button
-                onClick={() => { window.location.href = '/auth/oidc/login' }}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
-              >
-                <LogIn className="h-4 w-4" />
-                Sign in with Keycloak
-              </button>
+        <div className="rounded-lg border border-border bg-card shadow-sm">
+          <div className="border-b border-border px-6 py-4">
+            <h2 className="text-center text-lg font-semibold">Sign in</h2>
+          </div>
+          <div className="space-y-4 p-6">
+            {oidcEnabled ? (
+              <>
+                <button
+                  onClick={() => { window.location.href = '/auth/oidc/login' }}
+                  className="w-full rounded-md border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                >
+                  Sign in with SSO
+                </button>
 
-              <div className="relative my-6">
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t border-border" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">or</span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="relative">
                 <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-border" />
+                  <span className="w-full border-t" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-2 text-muted-foreground">or</span>
+                  <span className="bg-card px-2 text-muted-foreground">OIDC not configured</span>
                 </div>
-              </div>
-            </>
-          ) : (
-            <div className="mb-4 rounded-lg border border-border bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-              OIDC not configured. Sign in with the local admin account.
-            </div>
-          )}
-
-          {/* Local admin form */}
-          <form onSubmit={handleLocalLogin} className="space-y-4">
-            <div>
-              <label htmlFor="username" className="mb-1 block text-sm font-medium text-foreground">
-                Username
-              </label>
-              <input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="admin"
-                autoComplete="username"
-                required
-                disabled={rateLimitRetry > 0}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="password" className="mb-1 block text-sm font-medium text-foreground">
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-                required
-                disabled={rateLimitRetry > 0}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50"
-              />
-            </div>
-
-            {error && (
-              <div className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>{error}</span>
               </div>
             )}
 
-            <button
-              type="submit"
-              disabled={submitting || rateLimitRetry > 0}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-foreground px-4 py-2.5 text-sm font-medium text-background transition-colors hover:bg-foreground/90 disabled:opacity-50"
-            >
-              {submitting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : rateLimitRetry > 0 ? (
-                `Try again in ${rateLimitRetry}s`
-              ) : (
-                'Sign in'
+            <form onSubmit={handleLocalLogin} className="space-y-3">
+              <div className="space-y-1">
+                <label htmlFor="username" className="text-sm font-medium text-foreground">
+                  Username
+                </label>
+                <input
+                  id="username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="admin"
+                  autoComplete="username"
+                  required
+                  disabled={rateLimitRetry > 0}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label htmlFor="password" className="text-sm font-medium text-foreground">
+                  Password
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  required
+                  disabled={rateLimitRetry > 0}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
+                />
+              </div>
+
+              {error && (
+                <p className="text-sm text-destructive">{error}</p>
               )}
-            </button>
-          </form>
+
+              <button
+                type="submit"
+                disabled={submitting || rateLimitRetry > 0}
+                className="inline-flex h-9 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"
+              >
+                {submitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : rateLimitRetry > 0 ? (
+                  `Try again in ${rateLimitRetry}s`
+                ) : (
+                  'Sign in'
+                )}
+              </button>
+
+              <p className="text-center text-xs text-muted-foreground">
+                Rate limit: 10 attempts / 15 min
+              </p>
+            </form>
+          </div>
         </div>
 
-        {/* Footer */}
-        <p className="text-center text-xs text-muted-foreground">
-          A Wisbric product
+        <p className="mt-6 text-center text-xs text-muted-foreground">
+          BookOwl — A Wisbric product
         </p>
       </div>
     </div>

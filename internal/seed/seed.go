@@ -172,19 +172,36 @@ func ensureGlobalSchema(ctx context.Context, pool *pgxpool.Pool) error {
 func ensureLocalAdmin(ctx context.Context, pool *pgxpool.Pool, cfg config.Config) error {
 	gq := dbglobal.New(pool)
 
+	// Determine password.
+	password := cfg.AdminPassword
+	if password == "" {
+		password = "bookowl-admin"
+	}
+
 	// Check if local admin already exists.
 	_, err := gq.GetLocalAdminByTenant(ctx, tenantSlug)
 	if err == nil {
-		slog.Info("local admin already exists", "tenant", tenantSlug)
+		if cfg.AdminPassword != "" {
+			// Explicit password configured: update to match.
+			hashBytes, err := bcrypt.GenerateFromPassword([]byte(password), 12)
+			if err != nil {
+				return fmt.Errorf("hashing admin password: %w", err)
+			}
+			_, err = pool.Exec(ctx,
+				"UPDATE local_admins SET password_hash = $1, must_change = true WHERE tenant_slug = $2",
+				string(hashBytes), tenantSlug,
+			)
+			if err != nil {
+				return fmt.Errorf("updating local admin password: %w", err)
+			}
+			slog.Info("local admin password updated", "tenant", tenantSlug)
+		} else {
+			slog.Info("local admin already exists", "tenant", tenantSlug)
+		}
 		return nil
 	}
 
-	// Determine password.
-	password := "bookowl-admin" // Hardcoded for seed
-	generated := false
-
 	hashBytes, err := bcrypt.GenerateFromPassword([]byte(password), 12)
-	hash := string(hashBytes)
 	if err != nil {
 		return fmt.Errorf("hashing admin password: %w", err)
 	}
@@ -192,7 +209,7 @@ func ensureLocalAdmin(ctx context.Context, pool *pgxpool.Pool, cfg config.Config
 	_, err = gq.CreateLocalAdmin(ctx, dbglobal.CreateLocalAdminParams{
 		TenantSlug:   tenantSlug,
 		Username:     "admin",
-		PasswordHash: hash,
+		PasswordHash: string(hashBytes),
 		MustChange:   true,
 	})
 	if err != nil {
@@ -202,9 +219,6 @@ func ensureLocalAdmin(ctx context.Context, pool *pgxpool.Pool, cfg config.Config
 	fmt.Println("✓ Local admin created")
 	fmt.Println("  Username: admin")
 	fmt.Printf("  Password: %s\n", password)
-	if generated {
-		fmt.Println("  ⚠ Save this password — it will not be shown again")
-	}
 
 	return nil
 }

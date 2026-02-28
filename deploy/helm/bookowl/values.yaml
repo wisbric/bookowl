@@ -28,6 +28,8 @@ api:
       cpu: 500m
       memory: 256Mi
 
+adminPassword: ""   # bootstrap local admin password (if empty, defaults to bookowl-admin)
+
 secretKey: ""   # 32-byte hex, used to sign session JWTs (set via external secret)
 
 database:
@@ -101,6 +103,10 @@ pdb:
 serviceAccount:
   create: true
   name: ""
+
+# -- Seed job (runs on first install to bootstrap tenant + admin)
+seed:
+  enabled: false
 
 imagePullSecrets: []
 extraEnv: []
