@@ -44,6 +44,11 @@ func (h *Handler) Routes() chi.Router {
 	r.Get("/config/oidc", h.GetOIDCConfig)
 	r.Put("/config/oidc", h.UpdateOIDCConfig)
 	r.Post("/config/oidc/test", h.TestOIDCConfig)
+
+	// API key management.
+	r.Get("/api-keys", h.handleListAPIKeys)
+	r.Post("/api-keys", h.handleCreateAPIKey)
+	r.Delete("/api-keys/{id}", h.handleDeleteAPIKey)
 	return r
 }
 
