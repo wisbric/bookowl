@@ -269,6 +269,11 @@ function AuthenticationSection() {
       </div>
 
       <div className="space-y-4">
+        {config?.source === 'environment' && (
+          <div className="rounded-md border border-accent/30 bg-accent/5 px-3 py-2 text-xs text-accent">
+            OIDC is configured via environment variables (Helm/deployment). To override per-tenant, fill in the fields below and save.
+          </div>
+        )}
         <div>
           <label className="mb-1 block text-sm font-medium">Issuer URL</label>
           <input

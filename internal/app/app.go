@@ -271,6 +271,10 @@ func (a *App) setupRouter() {
 
 	// Admin handler.
 	adminHandler := admin.NewHandler(a.plat.DB, liveContextClient, a.cfg.SecretKey, a.plat.Redis)
+	adminHandler.SetOIDCEnvDefaults(admin.OIDCEnvDefaults{
+		IssuerURL: a.cfg.OIDCIssuerURL,
+		ClientID:  a.cfg.OIDCClientID,
+	})
 
 	// API v1 routes (require auth + tenant).
 	r.Route("/api/v1", func(r chi.Router) {

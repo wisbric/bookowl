@@ -44,6 +44,7 @@ type OIDCConfigResponse struct {
 	Enabled        bool     `json:"enabled"`
 	LastTestedAt   string   `json:"last_tested_at,omitempty"`
 	LastTestResult string   `json:"last_test_result,omitempty"`
+	Source         string   `json:"source,omitempty"` // "environment" when from env vars
 }
 
 // OIDCConfigUpdateRequest is the body for PUT /admin/config/oidc.
@@ -208,6 +209,16 @@ func (h *Handler) GetOIDCConfig(w http.ResponseWriter, r *http.Request) {
 
 	cfg := loadOIDCConfig(t.Config)
 
+	// If no OIDC section in tenant config, fall back to env-var defaults.
+	source := ""
+	if cfg.IssuerURL == "" && h.oidcDefaults.IssuerURL != "" {
+		cfg.IssuerURL = h.oidcDefaults.IssuerURL
+		cfg.ClientID = h.oidcDefaults.ClientID
+		cfg.ClientSecret = "set-via-env"
+		cfg.Enabled = true
+		source = "environment"
+	}
+
 	httpserver.Respond(w, http.StatusOK, OIDCConfigResponse{
 		IssuerURL:      cfg.IssuerURL,
 		ClientID:       cfg.ClientID,
@@ -218,6 +229,7 @@ func (h *Handler) GetOIDCConfig(w http.ResponseWriter, r *http.Request) {
 		Enabled:        cfg.Enabled,
 		LastTestedAt:   cfg.LastTestedAt,
 		LastTestResult: cfg.LastTestResult,
+		Source:         source,
 	})
 }
 
@@ -309,6 +321,14 @@ func (h *Handler) TestOIDCConfig(w http.ResponseWriter, r *http.Request) {
 	if !httpserver.DecodeAndValidate(w, r, &req) {
 
 		return
+	}
+
+	// Fall back to env-var defaults if not in request.
+	if req.IssuerURL == "" {
+		req.IssuerURL = h.oidcDefaults.IssuerURL
+	}
+	if req.ClientID == "" {
+		req.ClientID = h.oidcDefaults.ClientID
 	}
 
 	if req.IssuerURL == "" {

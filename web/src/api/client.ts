@@ -181,6 +181,7 @@ export interface OIDCConfig {
   enabled: boolean
   last_tested_at?: string
   last_test_result?: string
+  source?: string // "environment" when configured via env vars
 }
 
 export interface OIDCTestDetails {

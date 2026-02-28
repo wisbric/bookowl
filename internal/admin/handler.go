@@ -16,12 +16,19 @@ import (
 	"github.com/wisbric/bookowl/pkg/tenant"
 )
 
+// OIDCEnvDefaults holds OIDC values from environment variables for display in admin UI.
+type OIDCEnvDefaults struct {
+	IssuerURL string
+	ClientID  string
+}
+
 // Handler serves /api/v1/admin/ endpoints for tenant configuration.
 type Handler struct {
-	globalQ   *dbglobal.Queries
-	client    *livecontext.Client
-	secretKey string        // hex-encoded 32-byte key for AES-256-GCM encryption
-	redis     *redis.Client // for cache invalidation
+	globalQ      *dbglobal.Queries
+	client       *livecontext.Client
+	secretKey    string        // hex-encoded 32-byte key for AES-256-GCM encryption
+	redis        *redis.Client // for cache invalidation
+	oidcDefaults OIDCEnvDefaults
 }
 
 func NewHandler(globalDB dbglobal.DBTX, client *livecontext.Client, secretKey string, rdb *redis.Client) *Handler {
@@ -31,6 +38,11 @@ func NewHandler(globalDB dbglobal.DBTX, client *livecontext.Client, secretKey st
 		secretKey: secretKey,
 		redis:     rdb,
 	}
+}
+
+// SetOIDCEnvDefaults sets OIDC values from environment variables.
+func (h *Handler) SetOIDCEnvDefaults(d OIDCEnvDefaults) {
+	h.oidcDefaults = d
 }
 
 func (h *Handler) Routes() chi.Router {
