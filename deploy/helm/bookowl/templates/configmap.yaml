@@ -14,6 +14,9 @@ data:
   {{- if .Values.oidc.clientId }}
   OIDC_CLIENT_ID: {{ .Values.oidc.clientId | quote }}
   {{- end }}
+  {{- if .Values.publicUrl }}
+  BOOKOWL_PUBLIC_URL: {{ .Values.publicUrl | quote }}
+  {{- end }}
   {{- if .Values.nightowl.apiUrl }}
   BOOKOWL_NIGHTOWL_API_URL: {{ .Values.nightowl.apiUrl | quote }}
   {{- end }}

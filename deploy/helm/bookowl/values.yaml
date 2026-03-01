@@ -17,6 +17,8 @@ web:
       cpu: 200m
       memory: 128Mi
 
+publicUrl: ""   # Public frontend URL for integration links (e.g. https://bookowl.example.com)
+
 api:
   replicas: 2
   port: 8081
