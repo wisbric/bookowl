@@ -40,13 +40,15 @@ function DocumentPage() {
   const collabEnabled = !!collabWsUrl
   const tenantSlug = devMode ? 'acme' : (profile as Record<string, string> | null)?.tenant_slug || 'acme'
   const collabToken = useCollabToken(collabEnabled)
-  const { ydoc, provider: collabProvider } = useCollabProvider({
+  const { ydoc, provider: collabProvider, synced: collabSynced } = useCollabProvider({
     documentId: docId,
     tenantSlug,
     token: collabToken,
     wsUrl: collabWsUrl,
     enabled: collabEnabled,
   })
+  // Only use collab mode if the provider is actually connected and synced.
+  const collabActive = collabEnabled && collabSynced && !!collabProvider
   const userName = profile?.display_name || profile?.email || 'Anonymous'
   const userColor = getCursorColor(profile?.id || 'dev-user')
 
@@ -144,7 +146,7 @@ function DocumentPage() {
                 {doc.title}
               </h1>
               <div className="flex items-center gap-2">
-                {collabEnabled && <PresenceAvatars provider={collabProvider} />}
+                {collabActive && <PresenceAvatars provider={collabProvider} />}
                 <button
                   onClick={() => setEditing(!editing)}
                   className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm transition-colors hover:bg-muted"
@@ -228,12 +230,12 @@ function DocumentPage() {
           {/* Editor / Viewer */}
           {editing ? (
             <BookOwlEditor
-              key={docId}
+              key={`${docId}-${collabActive}`}
               content={doc.content}
               editable={editing}
-              onSave={collabEnabled ? undefined : handleSave}
-              collabProvider={collabEnabled ? collabProvider : undefined}
-              ydoc={collabEnabled ? ydoc : undefined}
+              onSave={collabActive ? undefined : handleSave}
+              collabProvider={collabActive ? collabProvider : undefined}
+              ydoc={collabActive ? ydoc : undefined}
               userName={userName}
               userColor={userColor}
             />
