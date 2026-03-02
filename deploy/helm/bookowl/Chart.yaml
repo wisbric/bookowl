@@ -2,8 +2,8 @@ apiVersion: v2
 name: bookowl
 description: BookOwl — Knowledge management platform by Wisbric
 type: application
-version: 0.1.10
-appVersion: "0.1.10"
+version: 0.1.11
+appVersion: "0.1.11"
 keywords: [knowledge-base, documentation, runbooks, wisbric, nightowl]
 maintainers:
   - name: Wisbric
