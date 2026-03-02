@@ -62,9 +62,11 @@ function getCursorColor(userId: string): string {
 
 interface SessionClaims {
   sub: string
-  tenant: string
+  tenant_slug: string
+  tenant_id: string
   role: string
-  auth_method: string
+  method: string
+  email?: string
   user_id?: string
   name?: string
 }
@@ -82,9 +84,10 @@ const server = Server.configure({
       return {
         user: {
           sub: 'dev-user',
-          tenant: documentName.split('/')[0],
+          tenant_slug: documentName.split('/')[0],
+          tenant_id: '',
           role: 'admin',
-          auth_method: 'dev',
+          method: 'dev',
         } satisfies SessionClaims,
       }
     }
@@ -94,7 +97,7 @@ const server = Server.configure({
     try {
       const claims = jwt.verify(token, SECRET) as SessionClaims
       const [tenantSlug] = documentName.split('/')
-      if (claims.tenant !== tenantSlug) throw new Error('wrong tenant')
+      if (claims.tenant_slug !== tenantSlug) throw new Error('wrong tenant')
       return { user: claims }
     } catch {
       throw new Error('invalid token')
