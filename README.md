@@ -8,6 +8,7 @@ BookOwl provides structured documentation — runbooks, post-mortems, SOPs, arch
 
 - **Spaces & Collections** — Organize documents into spaces with nested collections and drag-and-drop ordering
 - **Rich Editor** — Tiptap-based block editor with slash commands, callouts, code blocks, diagrams, and image uploads
+- **Real-Time Collaboration** — Yjs CRDT via Hocuspocus collab server with cursor presence and WebSocket sync
 - **NightOwl Live Context** — Embed live on-call rosters, service status, and active alerts directly in runbooks
 - **Full-Text Search** — PostgreSQL tsvector search with highlighting across all documents
 - **Version History** — Every edit creates a version snapshot; restore any previous version
@@ -24,7 +25,12 @@ BookOwl provides structured documentation — runbooks, post-mortems, SOPs, arch
 ┌─────────────┐     ┌──────────────┐     ┌──────────────┐
 │   Frontend   │────▶│  BookOwl API  │────▶│  PostgreSQL   │
 │  React/Vite  │     │   Go / Chi   │     │  (per-tenant) │
-└─────────────┘     └──────┬───────┘     └──────────────┘
+└──────┬──────┘     └──────┬───────┘     └──────────────┘
+       │                   │
+       │  WebSocket  ┌─────┴──────┐
+       └────────────▶│   Collab   │
+                     │ Hocuspocus │
+                     └────────────┘
                            │
                     ┌──────┴───────┐
                     │    Redis     │
@@ -37,11 +43,13 @@ BookOwl provides structured documentation — runbooks, post-mortems, SOPs, arch
                     └──────────────┘
 ```
 
-BookOwl is a separate microservice from NightOwl. They share the same OIDC provider and multi-tenant architecture, communicate over REST API, and deploy together on Kubernetes via a shared Helm chart.
+BookOwl runs three services: an **API server** (Go), a **frontend** (React/Vite), and a **collab server** (Hocuspocus/Node.js) for real-time collaborative editing via Yjs. They share the same OIDC provider and multi-tenant architecture with NightOwl, communicate over REST API, and deploy together on Kubernetes via a shared Helm chart.
 
 ## Tech Stack
 
 **Backend:** Go 1.25+, Chi router, PostgreSQL 16+ (pgx + sqlc), Redis 7, OIDC (go-oidc), golang-migrate
+
+**Collab:** Node.js + Hocuspocus v2.15, Yjs, y-prosemirror, PostgreSQL persistence, Redis pub/sub
 
 **Frontend:** React 19, TypeScript 5.9, Vite 7, Tailwind CSS 4, TanStack Query + Router, Tiptap 2, lucide-react
 
@@ -112,10 +120,12 @@ pkg/
   template/           # Document templates
   tenant/             # Tenant middleware and context
   user/               # User profile and personal tokens
-web/                  # React frontend
-  src/auth/           # Auth provider (cookie-based sessions via wisbric_session)
-  src/components/     # UI components (editor, sidebar, panels)
-  src/routes/         # TanStack Router pages
+collab/                 # Hocuspocus collab server (Node.js)
+  src/server.ts         # WebSocket server with JWT auth, Yjs persistence, Redis pub/sub
+web/                    # React frontend
+  src/auth/             # Auth provider (cookie-based sessions via wisbric_session)
+  src/components/       # UI components (editor, sidebar, panels)
+  src/routes/           # TanStack Router pages
 migrations/
   global/             # Global schema migrations
   tenant/             # Per-tenant schema migrations
@@ -147,6 +157,7 @@ All endpoints require authentication (OIDC token, session cookie, or API key) an
 | `POST /api/v1/documents` | Create document |
 | `GET /api/v1/documents/:id` | Get document with content |
 | `PUT /api/v1/documents/:id` | Update document (auto-versions) |
+| `DELETE /api/v1/documents/:id` | Delete document |
 | `GET /api/v1/documents/:id/history` | Version history |
 | `GET /api/v1/documents/:id/comments` | List comments (threaded) |
 | `POST /api/v1/documents/:id/comments` | Add comment |
@@ -181,6 +192,8 @@ Design specifications are in `docs/`:
 | [13-export](docs/13-export.md) | PDF, Markdown, HTML export |
 | [14-comments](docs/14-comments.md) | Threaded comments and notifications |
 | [15-templates](docs/15-templates.md) | Template library |
+| [16-drag-and-drop](docs/16-drag-and-drop.md) | Sidebar drag-and-drop ordering |
+| [17-collab](docs/17-collab.md) | Real-time collaborative editing (Yjs + Hocuspocus) |
 
 ## Deployment
 

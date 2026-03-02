@@ -30,6 +30,8 @@ All design decisions are captured in `docs/`. Always read the relevant spec befo
 - `docs/13-export.md` — PDF, Markdown, HTML export
 - `docs/14-comments.md` — Threaded comments, @mentions, and notifications
 - `docs/15-templates.md` — Template library (system + user templates)
+- `docs/16-drag-and-drop.md` — Sidebar drag-and-drop ordering
+- `docs/17-collab.md` — Real-time collaborative editing (Yjs + Hocuspocus)
 
 ## Branding
 
@@ -59,6 +61,16 @@ The product is called **BookOwl**. It uses the NightOwl design system from the p
 - **Logging:** slog (structured JSON)
 - **Config:** caarlos0/env/v11
 - **UUIDs:** google/uuid
+
+### Collab Server
+
+- **Runtime:** Node.js + TypeScript (in `collab/`)
+- **WebSocket server:** @hocuspocus/server v2.15
+- **CRDT:** Yjs + y-prosemirror (converts between Tiptap JSON and Yjs doc)
+- **Persistence:** PostgreSQL (`document_yjs_state` table) via @hocuspocus/extension-database
+- **Multi-replica sync:** Redis pub/sub via @hocuspocus/extension-redis
+- **Auth:** JWT verification of `wisbric_session` cookie token
+- **Port:** 1234 (WebSocket)
 
 ### Frontend
 
@@ -120,12 +132,14 @@ Auth is handled by the shared `core/pkg/auth` package (same as NightOwl/TicketOw
 docker compose up -d          # PostgreSQL + Redis
 make seed                     # Create "acme" dev tenant (idempotent)
 go run ./cmd/bookowl          # API on :8081
+cd collab && DATABASE_URL="postgres://bookowl:bookowl@localhost:5433/bookowl" npx tsx src/server.ts  # Collab on :1234
 cd web && npm run dev         # Frontend on :3001 (proxies /api to :8081)
 ```
 
 - Dev API key: `bw_dev_seed_key_do_not_use_in_production`
 - Local admin: username `admin`, password `bookowl-admin` (dev mode only; forced password change on first login)
 - Login URL: `http://localhost:3001/login`
+- Collab WebSocket URL (dev): set `VITE_COLLAB_WS_URL=ws://localhost:1234` in `web/.env.local`
 - Env vars prefix: `BOOKOWL_` (e.g., `BOOKOWL_MODE`, `BOOKOWL_PORT`)
 - DB credentials (dev): `bookowl:bookowl@localhost:5433/bookowl`
 - NightOwl API (dev): `BOOKOWL_NIGHTOWL_API_URL=http://localhost:8080`
