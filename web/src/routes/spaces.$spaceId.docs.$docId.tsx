@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { Pencil, Eye, Clock, ChevronLeft, MoreHorizontal, LayoutTemplate, X, MessageSquare } from 'lucide-react'
+import { Pencil, Eye, Clock, ChevronLeft, MoreHorizontal, LayoutTemplate, X, MessageSquare, Trash2 } from 'lucide-react'
+import { useNavigate } from '@tanstack/react-router'
 import { api } from '@/api/client'
 import { BookOwlEditor } from '@/components/editor/BookOwlEditor'
 import { ContentRenderer } from '@/components/editor/ContentRenderer'
@@ -24,11 +25,13 @@ export const Route = createFileRoute('/spaces/$spaceId/docs/$docId')({
 function DocumentPage() {
   const { spaceId, docId } = Route.useParams()
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
   const [showVersions, setShowVersions] = useState(false)
   const [showComments, setShowComments] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [showSaveTemplate, setShowSaveTemplate] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   const { setRightPanelOpen } = useRightPanel()
@@ -92,6 +95,23 @@ function DocumentPage() {
     [saveMutation],
   )
 
+  const deleteMutation = useMutation({
+    mutationFn: () => api.del(`/documents/${docId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['documents'] })
+      queryClient.invalidateQueries({ queryKey: ['space', spaceId] })
+      navigate({ to: '/spaces/$spaceId', params: { spaceId } })
+    },
+  })
+
+  const handleToggleEdit = useCallback(() => {
+    if (editing) {
+      // Switching from edit to view — refetch document to get latest content.
+      queryClient.invalidateQueries({ queryKey: ['document', docId] })
+    }
+    setEditing(!editing)
+  }, [editing, queryClient, docId])
+
   // Close menu on outside click.
   useEffect(() => {
     if (!showMenu) return
@@ -148,7 +168,7 @@ function DocumentPage() {
               <div className="flex items-center gap-2">
                 {collabActive && <PresenceAvatars provider={collabProvider} />}
                 <button
-                  onClick={() => setEditing(!editing)}
+                  onClick={handleToggleEdit}
                   className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm transition-colors hover:bg-muted"
                 >
                   {editing ? (
@@ -200,6 +220,16 @@ function DocumentPage() {
                       >
                         <LayoutTemplate className="h-4 w-4" />
                         Save as Template
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowMenu(false)
+                          setShowDeleteConfirm(true)
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-muted"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Delete
                       </button>
                     </div>
                   )}
@@ -277,6 +307,37 @@ function DocumentPage() {
           spaceName={space?.name}
           onClose={() => setShowSaveTemplate(false)}
         />
+      )}
+
+      {/* Delete confirmation dialog */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black/60" onClick={() => setShowDeleteConfirm(false)} />
+          <div className="relative w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-2xl">
+            <h2 className="text-lg font-semibold">Delete document</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Are you sure you want to delete &ldquo;{doc.title}&rdquo;? This action cannot be undone.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="rounded-md border border-border px-4 py-2 text-sm hover:bg-muted"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteMutation.mutate()}
+                disabled={deleteMutation.isPending}
+                className="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
+              >
+                {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+            {deleteMutation.isError && (
+              <p className="mt-2 text-sm text-destructive">Failed to delete document.</p>
+            )}
+          </div>
+        </div>
       )}
     </div>
   )
