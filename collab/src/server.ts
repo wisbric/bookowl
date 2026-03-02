@@ -99,7 +99,8 @@ const server = Server.configure({
       const [tenantSlug] = documentName.split('/')
       if (claims.tenant_slug !== tenantSlug) throw new Error('wrong tenant')
       return { user: claims }
-    } catch {
+    } catch (err) {
+      console.error('Collab auth failed:', err instanceof Error ? err.message : err, 'documentName:', documentName)
       throw new Error('invalid token')
     }
   },
