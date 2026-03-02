@@ -75,12 +75,26 @@ const server = Server.configure({
   port: PORT,
   address: '0.0.0.0',
 
+  async onUpgrade({ request }) {
+    console.log('[collab] onUpgrade:', request.url, 'headers:', JSON.stringify({
+      upgrade: request.headers.upgrade,
+      connection: request.headers.connection,
+      host: request.headers.host,
+    }))
+  },
+
   // Auth: validate bw_session JWT passed as token param.
   async onAuthenticate({ token, documentName }) {
-    if (!token) throw new Error('unauthenticated')
+    console.log('[collab] onAuthenticate: documentName=', documentName, 'token?=', !!token, 'tokenLen=', token?.length ?? 0, 'secret?=', !!SECRET)
+
+    if (!token) {
+      console.error('[collab] Auth rejected: no token provided')
+      throw new Error('unauthenticated')
+    }
 
     // In dev mode (no secret configured), accept a dev token.
     if (!SECRET && token === 'dev-token') {
+      console.log('[collab] Dev mode auth accepted')
       return {
         user: {
           sub: 'dev-user',
@@ -92,17 +106,33 @@ const server = Server.configure({
       }
     }
 
-    if (!SECRET) throw new Error('no secret configured')
+    if (!SECRET) {
+      console.error('[collab] Auth rejected: no secret configured')
+      throw new Error('no secret configured')
+    }
 
     try {
       const claims = jwt.verify(token, SECRET) as SessionClaims
       const [tenantSlug] = documentName.split('/')
-      if (claims.tenant_slug !== tenantSlug) throw new Error('wrong tenant')
+      console.log('[collab] JWT verified. tenant_slug=', claims.tenant_slug, 'expected=', tenantSlug)
+      if (claims.tenant_slug !== tenantSlug) {
+        console.error('[collab] Auth rejected: wrong tenant', claims.tenant_slug, '!==', tenantSlug)
+        throw new Error('wrong tenant')
+      }
+      console.log('[collab] Auth accepted for', claims.sub, documentName)
       return { user: claims }
     } catch (err) {
-      console.error('Collab auth failed:', err instanceof Error ? err.message : err, 'documentName:', documentName)
+      console.error('[collab] Auth failed:', err instanceof Error ? err.message : err, 'documentName:', documentName)
       throw new Error('invalid token')
     }
+  },
+
+  async onConnect({ documentName }) {
+    console.log('[collab] onConnect:', documentName)
+  },
+
+  async onDisconnect({ documentName }) {
+    console.log('[collab] onDisconnect:', documentName)
   },
 
   extensions: [
