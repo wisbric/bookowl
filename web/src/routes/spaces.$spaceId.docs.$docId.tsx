@@ -100,6 +100,7 @@ function DocumentPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documents'] })
       queryClient.invalidateQueries({ queryKey: ['space', spaceId] })
+      queryClient.invalidateQueries({ queryKey: ['space-tree', spaceId] })
       navigate({ to: '/spaces/$spaceId', params: { spaceId } })
     },
   })
