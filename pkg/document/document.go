@@ -33,6 +33,11 @@ type CreateRequest struct {
 	TemplateID         *uuid.UUID      `json:"template_id,omitempty"`
 }
 
+type MoveRequest struct {
+	SpaceID      uuid.UUID  `json:"space_id"`
+	CollectionID *uuid.UUID `json:"collection_id,omitempty"`
+}
+
 type UpdateRequest struct {
 	CollectionID       *uuid.UUID      `json:"collection_id,omitempty"`
 	Title              string          `json:"title"`

@@ -28,6 +28,7 @@ func (h *Handler) Routes(extraDocRoutes ...func(chi.Router)) chi.Router {
 		r.Get("/", h.Get)
 		r.Put("/", h.Update)
 		r.Delete("/", h.Delete)
+		r.Patch("/move", h.Move)
 		r.Get("/history", h.ListVersions)
 		r.Get("/history/{versionId}", h.GetVersion)
 		r.Post("/restore/{versionId}", h.Restore)
@@ -126,6 +127,27 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) Move(w http.ResponseWriter, r *http.Request) {
+	id, err := httpserver.URLParamUUID(r, "id")
+	if err != nil {
+		httpserver.RespondError(w, http.StatusBadRequest, "error", err.Error())
+		return
+	}
+
+	var req MoveRequest
+	if !httpserver.DecodeAndValidate(w, r, &req) {
+		return
+	}
+
+	store := NewStore(tenant.ConnFromContext(r.Context()))
+	resp, err := h.svc.Move(r.Context(), store, id, req)
+	if err != nil {
+		handleError(w, err)
+		return
+	}
+	httpserver.Respond(w, http.StatusOK, resp)
 }
 
 func (h *Handler) ListVersions(w http.ResponseWriter, r *http.Request) {

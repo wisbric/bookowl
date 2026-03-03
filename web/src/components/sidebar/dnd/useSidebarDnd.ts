@@ -120,9 +120,6 @@ export function useSidebarDnd(spaceId: string) {
 
     if (!dragged || !target) return
 
-    // Block cross-space moves.
-    if (dragged.spaceId !== target.spaceId) return
-
     if (dragged.kind === 'document' && target.kind === 'collection') {
       // Don't move if already in the same collection.
       if (dragged.collectionId === target.id) return
@@ -154,7 +151,6 @@ export function useSidebarDnd(spaceId: string) {
   // Check if a given drop target is valid for the current drag item.
   function isValidDrop(target: DropTarget): boolean {
     if (!activeItem) return false
-    if (activeItem.spaceId !== target.spaceId) return false
 
     if (activeItem.kind === 'document') {
       // Documents can only drop onto collections.

@@ -52,6 +52,14 @@ function put<T>(path: string, body: unknown) {
   })
 }
 
+function patch<T>(path: string, body: unknown) {
+  return request<T>(path, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
 function del(path: string) {
   return request<void>(path, { method: 'DELETE' })
 }
@@ -84,7 +92,7 @@ async function upload<T>(path: string, file: File): Promise<T> {
   return res.json()
 }
 
-export const api = { get, post, put, del, upload, ApiError }
+export const api = { get, post, put, patch, del, upload, ApiError }
 
 // --- Types ---
 

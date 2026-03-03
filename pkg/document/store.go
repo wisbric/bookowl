@@ -11,11 +11,12 @@ import (
 )
 
 type Store struct {
-	q *dbtenant.Queries
+	conn dbtenant.DBTX
+	q    *dbtenant.Queries
 }
 
 func NewStore(conn dbtenant.DBTX) *Store {
-	return &Store{q: dbtenant.New(conn)}
+	return &Store{conn: conn, q: dbtenant.New(conn)}
 }
 
 // Queries returns the underlying sqlc queries for use with cross-package helpers.
@@ -166,6 +167,30 @@ func (s *Store) ListVersions(ctx context.Context, docID uuid.UUID, limit, offset
 		return nil, fmt.Errorf("listing document versions: %w", err)
 	}
 	return rows, nil
+}
+
+func (s *Store) MoveToSpace(ctx context.Context, id, spaceID uuid.UUID, collectionID *uuid.UUID, slug string) error {
+	colID := db.NullUUID(collectionID)
+	_, err := s.conn.Exec(ctx,
+		`UPDATE documents SET space_id = $2, collection_id = $3, slug = $4, updated_at = now() WHERE id = $1`,
+		id, spaceID, colID, slug,
+	)
+	if err != nil {
+		return fmt.Errorf("moving document to space: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) SlugExistsInSpace(ctx context.Context, spaceID uuid.UUID, slug string) (bool, error) {
+	var exists bool
+	err := s.conn.QueryRow(ctx,
+		`SELECT EXISTS(SELECT 1 FROM documents WHERE space_id = $1 AND slug = $2)`,
+		spaceID, slug,
+	).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("checking slug existence: %w", err)
+	}
+	return exists, nil
 }
 
 func (s *Store) Search(ctx context.Context, query string, limit, offset int32) ([]dbtenant.SearchDocumentsRow, error) {

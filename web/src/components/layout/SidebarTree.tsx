@@ -1,10 +1,11 @@
 import { Link } from '@tanstack/react-router'
 import { DndContext, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
-import { ChevronRight, FileText, FolderOpen, GripVertical, Plus } from 'lucide-react'
+import { ChevronRight, FileText, FolderOpen, GripVertical, MoveRight, Plus } from 'lucide-react'
 import { useState } from 'react'
 import type { SpaceTree, TreeCollection, TreeDoc } from '@/api/client'
 import { CreateDocumentDialog } from '@/components/CreateDocumentDialog'
+import { MoveDocDialog } from '@/components/sidebar/MoveDocDialog'
 import { SidebarDragOverlay } from '@/components/sidebar/dnd/DragOverlay'
 import { useSidebarDnd } from '@/components/sidebar/dnd/useSidebarDnd'
 import type { DragItem, DropTarget } from '@/components/sidebar/dnd/types'
@@ -93,6 +94,8 @@ function DraggableDocument({
   collectionId: string | null
   isDragging: boolean
 }) {
+  const [showMove, setShowMove] = useState(false)
+
   const dragData: DragItem = {
     kind: 'document',
     id: doc.id,
@@ -111,34 +114,52 @@ function DraggableDocument({
   const typeColor = getDocTypeColor(doc.doc_type)
 
   return (
-    <div
-      ref={setNodeRef}
-      {...listeners}
-      {...attributes}
-      className={`group flex items-center rounded-md text-sm text-sidebar-foreground transition-colors hover:bg-muted ${
-        isDragging ? 'opacity-30' : ''
-      }`}
-    >
-      <span className="flex shrink-0 cursor-grab items-center px-0.5 text-muted-foreground opacity-0 group-hover:opacity-60">
-        <GripVertical className="h-3 w-3" />
-      </span>
-      <Link
-        to="/spaces/$spaceId/docs/$docId"
-        params={{ spaceId, docId: doc.id }}
-        className="flex min-w-0 flex-1 items-start gap-1.5 rounded-md px-1 py-1 transition-colors [&.active]:bg-muted [&.active]:text-accent"
-        onClick={(e) => {
-          // Prevent navigation if a drag just ended (pointer moved > threshold).
-          if (isDragging) e.preventDefault()
-        }}
+    <>
+      <div
+        ref={setNodeRef}
+        {...listeners}
+        {...attributes}
+        className={`group flex items-center rounded-md text-sm text-sidebar-foreground transition-colors hover:bg-muted ${
+          isDragging ? 'opacity-30' : ''
+        }`}
       >
-        <span
-          className="mt-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full"
-          style={{ backgroundColor: typeColor }}
-        />
-        <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-        <span className="break-words">{doc.title}</span>
-      </Link>
-    </div>
+        <span className="flex shrink-0 cursor-grab items-center px-0.5 text-muted-foreground opacity-0 group-hover:opacity-60">
+          <GripVertical className="h-3 w-3" />
+        </span>
+        <Link
+          to="/spaces/$spaceId/docs/$docId"
+          params={{ spaceId, docId: doc.id }}
+          className="flex min-w-0 flex-1 items-start gap-1.5 rounded-md px-1 py-1 transition-colors [&.active]:bg-muted [&.active]:text-accent"
+          onClick={(e) => {
+            // Prevent navigation if a drag just ended (pointer moved > threshold).
+            if (isDragging) e.preventDefault()
+          }}
+        >
+          <span
+            className="mt-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+            style={{ backgroundColor: typeColor }}
+          />
+          <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <span className="break-words">{doc.title}</span>
+        </Link>
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            setShowMove(true)
+          }}
+          className="rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
+          title="Move to Space"
+        >
+          <MoveRight className="h-3 w-3" />
+        </button>
+      </div>
+      <MoveDocDialog
+        open={showMove}
+        docId={doc.id}
+        currentSpaceId={spaceId}
+        onClose={() => setShowMove(false)}
+      />
+    </>
   )
 }
 

@@ -186,6 +186,38 @@ func (s *Service) Delete(ctx context.Context, store *Store, id uuid.UUID) error 
 	return store.Delete(ctx, id)
 }
 
+// Move moves a document to a different space (and optionally a collection within it).
+// Handles slug collisions by appending -1, -2, etc.
+func (s *Service) Move(ctx context.Context, store *Store, id uuid.UUID, req MoveRequest) (Response, error) {
+	doc, err := store.GetByID(ctx, id)
+	if err != nil {
+		return Response{}, err
+	}
+
+	// Resolve a unique slug in the target space.
+	slug := doc.Slug
+	for i := 1; ; i++ {
+		exists, err := store.SlugExistsInSpace(ctx, req.SpaceID, slug)
+		if err != nil {
+			return Response{}, fmt.Errorf("checking slug: %w", err)
+		}
+		if !exists {
+			break
+		}
+		slug = fmt.Sprintf("%s-%d", doc.Slug, i)
+	}
+
+	if err := store.MoveToSpace(ctx, id, req.SpaceID, req.CollectionID, slug); err != nil {
+		return Response{}, err
+	}
+
+	moved, err := store.GetByID(ctx, id)
+	if err != nil {
+		return Response{}, err
+	}
+	return toResponse(moved), nil
+}
+
 func (s *Service) ListVersions(ctx context.Context, store *Store, docID uuid.UUID, limit, offset int32) ([]VersionResponse, error) {
 	rows, err := store.ListVersions(ctx, docID, limit, offset)
 	if err != nil {
